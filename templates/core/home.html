@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная | QuTiP UI{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="eyebrow">Учебный Django-проект</p>
+        <h1>Интерфейс для моделирования квантовых систем на базе QuTiP</h1>
+        <p class="lead">
+            Приложение поможет задавать уровни энергии, лазерные переходы,
+            начальное состояние и запускать эволюцию системы локально.
+        </p>
+        <div class="actions">
+            <a class="button button-primary" href="{% url 'editor' %}">Открыть редактор</a>
+            <a class="button button-secondary" href="{% url 'about' %}">О проекте</a>
+        </div>
+    </div>
+    <div class="hero-card">
+        <h2>План MVP</h2>
+        <ul>
+            <li>Визуальное редактирование уровней и переходов</li>
+            <li>Ввод плотностной матрицы или популяций</li>
+            <li>Сборка гамильтониана в приближении вращающейся волны</li>
+            <li>Графики населённостей уровней во времени</li>
+        </ul>
+    </div>
+</section>
+{% endblock %}

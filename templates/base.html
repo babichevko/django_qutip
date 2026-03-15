@@ -1,0 +1,28 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}QuTiP UI{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-row">
+            <a class="brand" href="{% url 'home' %}">QuTiP UI Lab</a>
+            <nav class="site-nav">
+                <a href="{% url 'home' %}">Главная</a>
+                <a href="{% url 'system_list' %}">Системы</a>
+                <a href="{% url 'editor' %}">Редактор</a>
+                <a href="{% url 'results' %}">Результаты</a>
+                <a href="{% url 'help' %}">Справка</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
