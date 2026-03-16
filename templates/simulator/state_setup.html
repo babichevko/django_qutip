@@ -1,20 +1,17 @@
 {% extends 'base.html' %}
 
-{% block title %}Редактор | QuTiP UI{% endblock %}
+{% block title %}Начальное состояние | QuTiP UI{% endblock %}
 
 {% block content %}
 <section class="page-section">
-    <p class="eyebrow">Форма и редактор</p>
-    <h1>Редактор квантовой системы</h1>
+    <p class="eyebrow">Форма ввода</p>
+    <h1>Начальное состояние и эволюция</h1>
     <div class="form-shell">
-        <div class="canvas-placeholder">
-            <span>Здесь будет интерактивный редактор уровней и стрелок</span>
-        </div>
         <div class="card">
-            <h2>Параметры системы</h2>
+            <h2>Параметры симуляции</h2>
             <p class="form-intro">
-                Пока вместо визуального редактора используем обычную форму,
-                чтобы сразу собрать валидацию и структуру пользовательского ввода.
+                Здесь пользователь задаёт начальное состояние и временную сетку
+                для будущего расчёта в QuTiP.
             </p>
             <form method="post" novalidate class="app-form">
                 {% csrf_token %}
@@ -38,22 +35,17 @@
                 <button class="button button-primary" type="submit">Проверить данные</button>
             </form>
         </div>
+
         {% if cleaned_data %}
             <aside class="card">
                 <h2>Проверенные данные</h2>
                 <dl class="summary-list">
-                    <dt>Название</dt>
-                    <dd>{{ cleaned_data.name }}</dd>
-                    <dt>Уровни</dt>
-                    <dd>{{ cleaned_data.level_count }}</dd>
-                    <dt>Единицы энергии</dt>
-                    <dd>{{ cleaned_data.energy_unit }}</dd>
-                    <dt>Зазор</dt>
-                    <dd>{{ cleaned_data.level_spacing }}</dd>
-                    <dt>Ширина линии</dt>
-                    <dd>{{ cleaned_data.transition_linewidth }}</dd>
-                    <dt>Частота Раби</dt>
-                    <dd>{{ cleaned_data.rabi_frequency }}</dd>
+                    <dt>Режим</dt>
+                    <dd>{{ cleaned_data.initial_state_mode }}</dd>
+                    <dt>Время эволюции</dt>
+                    <dd>{{ cleaned_data.evolution_time }} {{ cleaned_data.time_unit }}</dd>
+                    <dt>Количество шагов</dt>
+                    <dd>{{ cleaned_data.time_steps }}</dd>
                 </dl>
             </aside>
         {% endif %}
