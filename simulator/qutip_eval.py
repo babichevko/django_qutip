@@ -14,6 +14,18 @@ from qutip import Qobj
 
 
 _ALLOWED_ATTRIBUTE_ROOTS = {'np', 'numpy', 'qt', 'qutip', 'math'}
+_ALLOWED_QOBJ_ATTRIBUTES = {
+    'conj',
+    'dag',
+    'expm',
+    'proj',
+    'ptrace',
+    'sqrtm',
+    'tidyup',
+    'transform',
+    'trans',
+    'unit',
+}
 _ALLOWED_NODES = (
     ast.Expression,
     ast.Call,
@@ -84,7 +96,16 @@ def _validate_ast(node):
             raise QutipExpressionError('В выражении используются неподдерживаемые конструкции Python.')
 
         if isinstance(child, ast.Attribute):
-            if not isinstance(child.value, ast.Name) or child.value.id not in _ALLOWED_ATTRIBUTE_ROOTS:
-                raise QutipExpressionError(
-                    'Разрешён доступ только к атрибутам модулей np, qutip и math.'
-                )
+            if child.attr.startswith('_'):
+                raise QutipExpressionError('Доступ к приватным атрибутам запрещён.')
+
+            if isinstance(child.value, ast.Name) and child.value.id in _ALLOWED_ATTRIBUTE_ROOTS:
+                continue
+
+            if child.attr in _ALLOWED_QOBJ_ATTRIBUTES:
+                continue
+
+            raise QutipExpressionError(
+                'Разрешён доступ только к атрибутам модулей np, qutip и math '
+                'или к безопасным методам объектов QuTiP.'
+            )
