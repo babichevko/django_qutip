@@ -1,5 +1,10 @@
 from django import forms
 
+from .qutip_eval import QutipExpressionError, evaluate_qutip_expression
+
+
+DEFAULT_TRANSITION_LINEWIDTH = 0.0
+DEFAULT_RABI_FREQUENCY = 0.1
 
 ENERGY_UNIT_CHOICES = [
     ('Hz', 'Hz'),
@@ -15,8 +20,8 @@ TIME_UNIT_CHOICES = [
 ]
 
 INITIAL_STATE_MODE_CHOICES = [
-    ('populations', 'Вероятности уровней'),
-    ('density_matrix', 'Матрица плотности'),
+    ('state_vector', 'Вектор состояния (код QuTiP)'),
+    ('density_matrix', 'Матрица плотности (код QuTiP)'),
 ]
 
 
@@ -56,26 +61,6 @@ class QuantumSystemForm(forms.Form):
             'invalid': 'Введите число для энергетического зазора.',
         },
     )
-    transition_linewidth = forms.FloatField(
-        label='Ширина линии перехода по умолчанию',
-        min_value=0.0,
-        initial=0.0,
-        error_messages={
-            'required': 'Укажите ширину линии.',
-            'min_value': 'Ширина линии не может быть отрицательной.',
-            'invalid': 'Введите число для ширины линии.',
-        },
-    )
-    rabi_frequency = forms.FloatField(
-        label='Частота Раби по умолчанию',
-        min_value=0.0,
-        initial=0.1,
-        error_messages={
-            'required': 'Укажите частоту Раби.',
-            'min_value': 'Частота Раби не может быть отрицательной.',
-            'invalid': 'Введите число для частоты Раби.',
-        },
-    )
     notes = forms.CharField(
         label='Комментарий',
         required=False,
@@ -88,29 +73,29 @@ class SimulationSetupForm(forms.Form):
     initial_state_mode = forms.ChoiceField(
         label='Способ задания начального состояния',
         choices=INITIAL_STATE_MODE_CHOICES,
-        initial='populations',
+        initial='state_vector',
     )
-    populations = forms.CharField(
-        label='Вероятности уровней',
+    state_vector_code = forms.CharField(
+        label='Код QuTiP для вектора состояния',
         required=False,
         widget=forms.Textarea(
             attrs={
                 'rows': 4,
-                'placeholder': 'Например: 1, 0, 0',
+                'placeholder': 'basis(2, 0)',
             }
         ),
-        help_text='Введите вероятности через запятую. Их сумма должна быть равна 1.',
+        help_text='Введите выражение Python, возвращающее Qobj-вектор состояния.',
     )
-    density_matrix = forms.CharField(
-        label='Матрица плотности',
+    density_matrix_code = forms.CharField(
+        label='Код QuTiP для матрицы плотности',
         required=False,
         widget=forms.Textarea(
             attrs={
-                'rows': 6,
-                'placeholder': 'Например:\n1, 0\n0, 0',
+                'rows': 4,
+                'placeholder': 'fock_dm(5, 2)',
             }
         ),
-        help_text='Введите квадратную матрицу построчно. Значения разделяйте запятыми.',
+        help_text='Введите выражение Python, возвращающее Qobj-матрицу плотности.',
     )
     evolution_time = forms.FloatField(
         label='Длительность эволюции',
@@ -143,92 +128,102 @@ class SimulationSetupForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
         mode = cleaned_data.get('initial_state_mode')
-        populations = (cleaned_data.get('populations') or '').strip()
-        density_matrix = (cleaned_data.get('density_matrix') or '').strip()
+        vector_code = (cleaned_data.get('state_vector_code') or '').strip()
+        density_code = (cleaned_data.get('density_matrix_code') or '').strip()
 
-        if mode == 'populations':
-            if not populations:
+        if mode == 'state_vector':
+            if not vector_code:
                 self.add_error(
-                    'populations',
-                    'Для режима вероятностей заполните список вероятностей уровней.',
+                    'state_vector_code',
+                    'Для этого режима введите код QuTiP, создающий вектор состояния.',
                 )
             else:
-                values = self._parse_population_values(populations)
-                if values is not None and abs(sum(values) - 1.0) > 1e-6:
-                    self.add_error(
-                        'populations',
-                        'Сумма вероятностей должна быть равна 1.',
-                    )
+                qobj = self._evaluate_expression('state_vector_code', vector_code)
+                if qobj is not None:
+                    self._validate_state_vector(qobj)
 
         if mode == 'density_matrix':
-            if not density_matrix:
+            if not density_code:
                 self.add_error(
-                    'density_matrix',
-                    'Для режима матрицы плотности заполните матрицу.',
+                    'density_matrix_code',
+                    'Для этого режима введите код QuTiP, создающий матрицу плотности.',
                 )
             else:
-                self._validate_density_matrix(density_matrix)
+                qobj = self._evaluate_expression('density_matrix_code', density_code)
+                if qobj is not None:
+                    self._validate_density_matrix(qobj)
+
+        if cleaned_data.get('evolution_time') == 0:
+            self.add_error('evolution_time', 'Длительность эволюции должна быть больше нуля.')
 
         return cleaned_data
 
-    def _parse_population_values(self, raw_value):
-        chunks = [item.strip() for item in raw_value.split(',') if item.strip()]
-        if not chunks:
-            self.add_error('populations', 'Нужно указать хотя бы одну вероятность.')
+    def _evaluate_expression(self, field_name, expression):
+        try:
+            qobj = evaluate_qutip_expression(expression)
+        except QutipExpressionError as exc:
+            self.add_error(field_name, str(exc))
             return None
 
-        values = []
-        for chunk in chunks:
-            try:
-                value = float(chunk)
-            except ValueError:
-                self.add_error(
-                    'populations',
-                    'Вероятности должны быть числами, разделёнными запятыми.',
-                )
-                return None
-            if value < 0:
-                self.add_error(
-                    'populations',
-                    'Вероятности не могут быть отрицательными.',
-                )
-                return None
-            values.append(value)
-        return values
+        self.cleaned_data['validated_qobj'] = qobj
+        self.cleaned_data['qobj_summary'] = self._build_summary(qobj)
+        return qobj
 
-    def _validate_density_matrix(self, raw_value):
-        rows = [row.strip() for row in raw_value.splitlines() if row.strip()]
-        parsed_rows = []
-
-        for row in rows:
-            chunks = [item.strip() for item in row.split(',')]
-            if not chunks:
-                continue
-            try:
-                parsed_row = [complex(item.replace('i', 'j')) for item in chunks]
-            except ValueError:
-                self.add_error(
-                    'density_matrix',
-                    'Матрица плотности должна содержать числа, разделённые запятыми.',
-                )
-                return
-            parsed_rows.append(parsed_row)
-
-        if not parsed_rows:
-            self.add_error('density_matrix', 'Матрица плотности не должна быть пустой.')
-            return
-
-        row_length = len(parsed_rows[0])
-        if any(len(row) != row_length for row in parsed_rows):
+    def _validate_state_vector(self, qobj):
+        if not (qobj.isket or qobj.isbra):
             self.add_error(
-                'density_matrix',
-                'Во всех строках матрицы должно быть одинаковое количество элементов.',
+                'state_vector_code',
+                'Выражение должно возвращать вектор состояния QuTiP, а не оператор.',
             )
             return
 
-        if len(parsed_rows) != row_length:
+        norm = float(qobj.norm())
+        if abs(norm - 1.0) > 1e-8:
             self.add_error(
-                'density_matrix',
-                'Матрица плотности должна быть квадратной.',
+                'state_vector_code',
+                f'Вектор состояния должен быть нормирован. Сейчас норма равна {norm:.8f}.',
+            )
+
+    def _validate_density_matrix(self, qobj):
+        if not qobj.isoper:
+            self.add_error(
+                'density_matrix_code',
+                'Выражение должно возвращать оператор QuTiP, представляющий матрицу плотности.',
             )
             return
+
+        trace_value = complex(qobj.tr())
+        if abs(trace_value - 1.0) > 1e-8:
+            self.add_error(
+                'density_matrix_code',
+                f'След матрицы плотности должен быть равен 1. Сейчас след равен {trace_value:.8g}.',
+            )
+
+        if not qobj.isherm:
+            self.add_error(
+                'density_matrix_code',
+                'Матрица плотности должна быть эрмитовой.',
+            )
+            return
+
+        eigenvalues = qobj.eigenenergies()
+        if any(value < -1e-8 for value in eigenvalues):
+            self.add_error(
+                'density_matrix_code',
+                'Матрица плотности должна быть положительно полуопределённой.',
+            )
+
+    def _build_summary(self, qobj):
+        summary = {
+            'shape': qobj.shape,
+            'dims': qobj.dims,
+            'type': qobj.type,
+        }
+
+        if qobj.isket or qobj.isbra:
+            summary['norm'] = float(qobj.norm())
+        if qobj.isoper:
+            summary['trace'] = complex(qobj.tr())
+            summary['hermitian'] = bool(qobj.isherm)
+
+        return summary
