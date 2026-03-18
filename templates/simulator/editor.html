@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Рабочая область | QuTiP UI{% endblock %}
 
@@ -17,50 +18,127 @@
     </div>
 </section>
 
-<section class="workspace-grid" id="system-config">
-    <div class="canvas-placeholder">
-        <span>Здесь будет интерактивный редактор уровней и стрелок</span>
-    </div>
-    <div class="card">
-        <p class="eyebrow">Раздел 1</p>
-        <h2>Параметры системы</h2>
-        <p class="form-intro">
-            Дефолтные значения для частоты Раби и ширины линии больше не задаются пользователем.
-            Пока они зафиксированы в коде: linewidth = {{ default_transition_linewidth }},
-            Rabi = {{ default_rabi_frequency }}.
-        </p>
-        <form method="post" novalidate class="app-form">
-            {% csrf_token %}
-            {% for field in system_form %}
-                <div class="form-row">
-                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                        <p class="help-text">{{ field.help_text }}</p>
-                    {% endif %}
-                    {% if field.errors %}
-                        <div class="field-errors">{{ field.errors }}</div>
-                    {% endif %}
+<section class="workspace-grid editor-grid" id="system-config">
+    <div class="editor-stack">
+        <section class="card editor-card">
+            <div class="editor-toolbar">
+                <button class="button button-secondary" type="button" id="init-levels-btn">Создать уровни из формы</button>
+                <button class="button button-secondary" type="button" id="add-level-btn">Добавить уровень</button>
+                <button class="button button-secondary" type="button" id="add-transition-btn">Связать выбранные уровни</button>
+                <button class="button button-secondary" type="button" id="auto-arrange-btn">Авторасстановка</button>
+                <button class="button button-secondary" type="button" id="delete-selected-btn">Удалить выбранное</button>
+            </div>
+            <div class="editor-status-row">
+                <p class="help-text" id="editor-status">
+                    Выберите или создайте уровни. Уровни можно перетаскивать только по вертикали.
+                </p>
+                <p class="help-text" id="selection-status">Выбрано: ничего</p>
+            </div>
+            <div class="canvas-shell">
+                <svg id="level-editor" class="level-editor-svg" viewBox="0 0 760 520" role="img" aria-label="Редактор квантовых уровней"></svg>
+            </div>
+            <div class="editor-legend">
+                <span><strong>Линия</strong>: энергетический уровень</span>
+                <span><strong>Стрелка</strong>: лазерный переход</span>
+                <span><strong>Толщина стрелки</strong>: частота Раби</span>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-headline">
+                <div>
+                    <p class="eyebrow">Раздел 1</p>
+                    <h2>Параметры системы</h2>
                 </div>
-            {% endfor %}
-            <button class="button button-primary" type="submit" name="system_submit">Проверить систему</button>
-        </form>
+                <span class="chip">line width = {{ default_transition_linewidth }}, Rabi = {{ default_rabi_frequency }}</span>
+            </div>
+            <p class="form-intro">
+                Поля ниже задают общую размерность и шкалу. Кнопка «Создать уровни из формы»
+                использует количество уровней и типичный зазор для первичной раскладки в редакторе.
+            </p>
+            <form method="post" novalidate class="app-form">
+                {% csrf_token %}
+                {% for field in system_form %}
+                    <div class="form-row">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                            <p class="help-text">{{ field.help_text }}</p>
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="field-errors">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                <button class="button button-primary" type="submit" name="system_submit">Проверить систему</button>
+            </form>
+        </section>
     </div>
-    {% if system_cleaned_data %}
-        <aside class="card result-card">
-            <h2>Проверенные данные системы</h2>
-            <dl class="summary-list">
-                <dt>Название</dt>
-                <dd>{{ system_cleaned_data.name }}</dd>
-                <dt>Уровни</dt>
-                <dd>{{ system_cleaned_data.level_count }}</dd>
-                <dt>Единицы энергии</dt>
-                <dd>{{ system_cleaned_data.energy_unit }}</dd>
-                <dt>Типичный зазор</dt>
-                <dd>{{ system_cleaned_data.level_spacing }}</dd>
-            </dl>
+
+    <div class="editor-side-column">
+        <aside class="card inspector-card">
+            <p class="eyebrow">Инспектор</p>
+            <h2>Свойства выбранного объекта</h2>
+            <div id="empty-selection" class="inspector-empty">
+                Выберите уровень или переход, чтобы увидеть и изменить его параметры.
+            </div>
+
+            <div id="level-inspector" class="inspector-panel" hidden>
+                <div class="form-row">
+                    <label for="selected-level-label">Подпись уровня</label>
+                    <input id="selected-level-label" type="text" value="">
+                </div>
+                <div class="form-row">
+                    <label for="selected-level-energy">Энергия уровня</label>
+                    <input id="selected-level-energy" type="number" step="0.01" value="0">
+                    <p class="help-text">Энергия связана с вертикальным положением уровня на схеме.</p>
+                </div>
+            </div>
+
+            <div id="transition-inspector" class="inspector-panel" hidden>
+                <div class="form-row">
+                    <label for="selected-transition-label">Подпись перехода</label>
+                    <input id="selected-transition-label" type="text" value="">
+                </div>
+                <div class="form-row">
+                    <label for="selected-transition-rabi">Частота Раби</label>
+                    <input id="selected-transition-rabi" type="range" min="0.05" max="5" step="0.05" value="0.4">
+                    <div class="value-chip" id="selected-transition-rabi-value">0.40</div>
+                </div>
+                <div class="form-row">
+                    <label for="selected-transition-linewidth">Ширина линии перехода</label>
+                    <input id="selected-transition-linewidth" type="number" min="0" step="0.01" value="0">
+                </div>
+                <div class="form-row">
+                    <label for="selected-transition-photon">Энергия фотона</label>
+                    <input id="selected-transition-photon" type="number" step="0.01" value="0">
+                    <p class="help-text">По умолчанию синхронизируется с расстоянием между уровнями.</p>
+                </div>
+            </div>
         </aside>
-    {% endif %}
+
+        {% if system_cleaned_data %}
+            <aside class="card result-card">
+                <h2>Проверенные данные системы</h2>
+                <dl class="summary-list">
+                    <dt>Название</dt>
+                    <dd>{{ system_cleaned_data.name }}</dd>
+                    <dt>Уровни</dt>
+                    <dd>{{ system_cleaned_data.level_count }}</dd>
+                    <dt>Единицы энергии</dt>
+                    <dd>{{ system_cleaned_data.energy_unit }}</dd>
+                    <dt>Типичный зазор</dt>
+                    <dd>{{ system_cleaned_data.level_spacing }}</dd>
+                </dl>
+            </aside>
+        {% endif %}
+
+        <aside class="card result-card">
+            <p class="eyebrow">Текущее описание</p>
+            <h2>JSON-конфигурация редактора</h2>
+            <textarea id="editor-json-preview" class="json-preview" readonly></textarea>
+        </aside>
+    </div>
 </section>
 
 <section class="workspace-grid workspace-grid-alt" id="initial-state">
@@ -129,4 +207,8 @@
         </p>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/level_editor.js' %}"></script>
 {% endblock %}
