@@ -7,10 +7,18 @@ from .forms import (
     QuantumSystemForm,
     SimulationSetupForm,
 )
+from .models import QuantumSystem
 
 
 def system_list(request):
-    return render(request, 'simulator/system_list.html')
+    systems = QuantumSystem.objects.prefetch_related('simulation_runs')
+    return render(
+        request,
+        'simulator/system_list.html',
+        {
+            'systems': systems,
+        },
+    )
 
 
 def editor(request):

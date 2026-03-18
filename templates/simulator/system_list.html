@@ -6,8 +6,33 @@
 <section class="page-section">
     <p class="eyebrow">Страница вывода</p>
     <h1>Сохранённые квантовые системы</h1>
-    <div class="card">
-        <p>Пока сохранённых систем нет. На следующем шаге добавим модели и хранение в SQLite.</p>
-    </div>
+    {% if systems %}
+        <div class="systems-grid">
+            {% for system in systems %}
+                <article class="card">
+                    <h2>{{ system.name }}</h2>
+                    <dl class="summary-list">
+                        <dt>Уровни</dt>
+                        <dd>{{ system.level_count }}</dd>
+                        <dt>Единицы</dt>
+                        <dd>{{ system.energy_unit }}</dd>
+                        <dt>Зазор</dt>
+                        <dd>{{ system.level_spacing }}</dd>
+                        <dt>Запуски</dt>
+                        <dd>{{ system.simulation_runs.count }}</dd>
+                        <dt>Обновлено</dt>
+                        <dd>{{ system.updated_at|date:"d.m.Y H:i" }}</dd>
+                    </dl>
+                    {% if system.notes %}
+                        <p class="help-text">{{ system.notes }}</p>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="card">
+            <p>Пока сохранённых систем нет. На следующем шаге мы свяжем формы с этой базой данных.</p>
+        </div>
+    {% endif %}
 </section>
 {% endblock %}
