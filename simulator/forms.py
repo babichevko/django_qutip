@@ -71,6 +71,13 @@ class QuantumSystemForm(forms.Form):
 
 
 class SimulationSetupForm(forms.Form):
+    plot_level_ids = forms.MultipleChoiceField(
+        label='Уровни для графиков населённостей',
+        required=False,
+        choices=[],
+        widget=forms.CheckboxSelectMultiple,
+        help_text='Выберите уровни для графиков populations. Если ничего не выбрано, будут показаны все уровни.',
+    )
     initial_state_mode = forms.ChoiceField(
         label='Способ задания начального состояния',
         choices=INITIAL_STATE_MODE_CHOICES,
@@ -125,12 +132,32 @@ class SimulationSetupForm(forms.Form):
             'invalid': 'Введите целое число временных шагов.',
         },
     )
+    observables_code = forms.CharField(
+        label='Дополнительные операторы наблюдаемых',
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                'rows': 6,
+                'placeholder': 'sigma_z = basis(2, 0) * basis(2, 0).dag() - basis(2, 1) * basis(2, 1).dag()',
+            }
+        ),
+        help_text='Один оператор на строку. Формат: `имя = выражение QuTiP` или просто выражение.',
+    )
+
+    def __init__(self, *args, level_choices=None, dimension=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.level_choices = level_choices or []
+        self.dimension = dimension
+        self.fields['plot_level_ids'].choices = self.level_choices
+        if not self.is_bound and self.level_choices:
+            self.fields['plot_level_ids'].initial = [choice[0] for choice in self.level_choices]
 
     def clean(self):
         cleaned_data = super().clean()
         mode = cleaned_data.get('initial_state_mode')
         vector_code = (cleaned_data.get('state_vector_code') or '').strip()
         density_code = (cleaned_data.get('density_matrix_code') or '').strip()
+        observables_code = (cleaned_data.get('observables_code') or '').strip()
 
         if mode == 'state_vector':
             if not vector_code:
@@ -154,9 +181,15 @@ class SimulationSetupForm(forms.Form):
                 if qobj is not None:
                     self._validate_density_matrix(qobj)
 
+        if observables_code:
+            cleaned_data['validated_observables'] = self._validate_observables(observables_code)
+        else:
+            cleaned_data['validated_observables'] = []
+
         if cleaned_data.get('evolution_time') == 0:
             self.add_error('evolution_time', 'Длительность эволюции должна быть больше нуля.')
 
+        cleaned_data['plot_level_ids'] = [int(value) for value in cleaned_data.get('plot_level_ids', [])]
         return cleaned_data
 
     def _evaluate_expression(self, field_name, expression):
@@ -183,6 +216,11 @@ class SimulationSetupForm(forms.Form):
             self.add_error(
                 'state_vector_code',
                 f'Вектор состояния должен быть нормирован. Сейчас норма равна {norm:.8f}.',
+            )
+        if self.dimension is not None and self.dimension not in qobj.shape:
+            self.add_error(
+                'state_vector_code',
+                f'Размерность вектора состояния должна совпадать с числом уровней ({self.dimension}).',
             )
 
     def _validate_density_matrix(self, qobj):
@@ -213,6 +251,56 @@ class SimulationSetupForm(forms.Form):
                 'density_matrix_code',
                 'Матрица плотности должна быть положительно полуопределённой.',
             )
+        if self.dimension is not None and qobj.shape != (self.dimension, self.dimension):
+            self.add_error(
+                'density_matrix_code',
+                f'Матрица плотности должна иметь размер {self.dimension}x{self.dimension}.',
+            )
+
+    def _validate_observables(self, raw_value):
+        observables = []
+        for index, line in enumerate(raw_value.splitlines(), start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            if '=' in stripped:
+                label, expression = [part.strip() for part in stripped.split('=', 1)]
+            else:
+                label, expression = f'O{index}', stripped
+
+            try:
+                qobj = evaluate_qutip_expression(expression)
+            except QutipExpressionError as exc:
+                self.add_error(
+                    'observables_code',
+                    f'Ошибка в операторе `{label}`: {exc}',
+                )
+                continue
+
+            if not qobj.isoper:
+                self.add_error(
+                    'observables_code',
+                    f'Оператор `{label}` должен быть оператором QuTiP, а не вектором.',
+                )
+                continue
+
+            if self.dimension is not None and qobj.shape != (self.dimension, self.dimension):
+                self.add_error(
+                    'observables_code',
+                    f'Оператор `{label}` должен иметь размер {self.dimension}x{self.dimension}.',
+                )
+                continue
+
+            observables.append(
+                {
+                    'label': label,
+                    'expression': expression,
+                    'summary': self._build_summary(qobj),
+                }
+            )
+
+        return observables
 
     def _build_summary(self, qobj):
         summary = {

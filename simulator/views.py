@@ -36,6 +36,46 @@ def _parse_editor_config(raw_value):
     return data if isinstance(data, dict) else {}
 
 
+def _editor_levels(editor_config):
+    levels = editor_config.get('levels', [])
+    if not isinstance(levels, list):
+        return []
+    return sorted(
+        [item for item in levels if isinstance(item, dict) and 'id' in item],
+        key=lambda item: item.get('energy', 0.0),
+    )
+
+
+def _level_choices(editor_config):
+    choices = []
+    for level in _editor_levels(editor_config):
+        label = level.get('label') or f"|{level['id']}>"
+        energy = level.get('energy')
+        choices.append((str(level['id']), f"{label} ({energy} {editor_config.get('energy_unit', 'MHz')})"))
+    return choices
+
+
+def _editor_dimension(editor_config, current_system=None):
+    levels = _editor_levels(editor_config)
+    if levels:
+        return len(levels)
+    if current_system is not None:
+        return current_system.level_count
+    return None
+
+
+def _json_safe(value):
+    if isinstance(value, complex):
+        return {'real': value.real, 'imag': value.imag}
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    return value
+
+
 def editor(request):
     system_cleaned_data = None
     state_cleaned_data = None
@@ -54,9 +94,12 @@ def editor(request):
     if current_system and not editor_config:
         editor_config = current_system.config_json
 
+    level_choices = _level_choices(editor_config)
+    dimension = _editor_dimension(editor_config, current_system=current_system)
+
     if request.method == 'POST' and 'system_submit' in request.POST:
         system_form = QuantumSystemForm(request.POST, prefix='system')
-        state_form = SimulationSetupForm(prefix='state')
+        state_form = SimulationSetupForm(prefix='state', level_choices=level_choices, dimension=dimension)
         if system_form.is_valid():
             system_cleaned_data = system_form.cleaned_data
             payload = {
@@ -76,7 +119,12 @@ def editor(request):
             latest_run = current_system.simulation_runs.first()
     elif request.method == 'POST' and 'state_submit' in request.POST:
         system_form = QuantumSystemForm(prefix='system')
-        state_form = SimulationSetupForm(request.POST, prefix='state')
+        state_form = SimulationSetupForm(
+            request.POST,
+            prefix='state',
+            level_choices=level_choices,
+            dimension=dimension,
+        )
         if state_form.is_valid():
             state_cleaned_data = state_form.cleaned_data
             if current_system is None:
@@ -85,6 +133,9 @@ def editor(request):
                     'Сначала сохраните систему в разделе параметров, затем сохраняйте запуск симуляции.',
                 )
             else:
+                if editor_config:
+                    current_system.config_json = editor_config
+                    current_system.save(update_fields=['config_json', 'updated_at'])
                 initial_state_code = (
                     state_cleaned_data.get('state_vector_code')
                     or state_cleaned_data.get('density_matrix_code')
@@ -98,19 +149,23 @@ def editor(request):
                     time_unit=state_cleaned_data['time_unit'],
                     time_steps=state_cleaned_data['time_steps'],
                     metadata_json={
-                        'qobj_summary': state_cleaned_data.get('qobj_summary', {}),
+                        'qobj_summary': _json_safe(state_cleaned_data.get('qobj_summary', {})),
                         'editor_config': editor_config,
+                        'selected_level_ids': state_cleaned_data.get('plot_level_ids', []),
+                        'observables': _json_safe(state_cleaned_data.get('validated_observables', [])),
                     },
                     status='draft',
                 )
                 try:
                     latest_run.result_json = run_simulation(
-                        current_system.config_json,
+                        editor_config or current_system.config_json,
                         initial_state_code=initial_state_code,
                         initial_state_mode=state_cleaned_data['initial_state_mode'],
                         evolution_time=state_cleaned_data['evolution_time'],
                         time_unit=state_cleaned_data['time_unit'],
                         time_steps=state_cleaned_data['time_steps'],
+                        selected_level_ids=state_cleaned_data.get('plot_level_ids', []),
+                        observables=state_cleaned_data.get('validated_observables', []),
                     )
                     latest_run.status = 'completed'
                 except SimulationBuildError as exc:
@@ -124,7 +179,7 @@ def editor(request):
                 latest_run.save()
     else:
         system_form = QuantumSystemForm(prefix='system')
-        state_form = SimulationSetupForm(prefix='state')
+        state_form = SimulationSetupForm(prefix='state', level_choices=level_choices, dimension=dimension)
 
     return render(
         request,

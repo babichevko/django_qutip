@@ -25,7 +25,16 @@ class SimulationBuildError(ValueError):
     pass
 
 
-def run_simulation(config, initial_state_code, initial_state_mode, evolution_time, time_unit, time_steps):
+def run_simulation(
+    config,
+    initial_state_code,
+    initial_state_mode,
+    evolution_time,
+    time_unit,
+    time_steps,
+    selected_level_ids=None,
+    observables=None,
+):
     levels = sorted(config.get('levels', []), key=lambda item: item['energy'])
     transitions = config.get('transitions', [])
 
@@ -70,17 +79,23 @@ def run_simulation(config, initial_state_code, initial_state_mode, evolution_tim
 
     rho0 = build_initial_state(initial_state_code, initial_state_mode, dimension)
     tlist = np.linspace(0.0, evolution_time * TIME_FACTORS[time_unit], time_steps)
-    population_ops = [basis_projector(dimension, index) for index in range(dimension)]
+    population_selection = _resolve_population_selection(levels, level_index_by_id, selected_level_ids)
+    observable_defs = observables or []
+
+    e_ops = [item['operator'] for item in population_selection]
+    e_ops.extend(_build_observable_operator(item, dimension) for item in observable_defs)
 
     result = qutip.mesolve(
         hamiltonian,
         rho0,
         tlist,
         c_ops=collapse_operators,
-        e_ops=population_ops,
+        e_ops=e_ops,
     )
 
-    populations = [np.real_if_close(values).tolist() for values in result.expect]
+    population_expect_count = len(population_selection)
+    population_expect = result.expect[:population_expect_count]
+    observable_expect = result.expect[population_expect_count:]
     time_axis = (tlist / TIME_FACTORS[time_unit]).tolist()
 
     return {
@@ -89,7 +104,18 @@ def run_simulation(config, initial_state_code, initial_state_mode, evolution_tim
         'time_axis': time_axis,
         'level_labels': [level['label'] for level in levels],
         'level_ids': [level['id'] for level in levels],
-        'populations': populations,
+        'population_series': [
+            {
+                'level_id': item['level']['id'],
+                'label': item['level']['label'],
+                'values': _real_series(values),
+            }
+            for item, values in zip(population_selection, population_expect)
+        ],
+        'observable_series': [
+            _serialize_observable_series(definition, values)
+            for definition, values in zip(observable_defs, observable_expect)
+        ],
         'hamiltonian_shape': list(hamiltonian.shape),
         'collapse_count': len(collapse_operators),
     }
@@ -116,6 +142,62 @@ def build_initial_state(initial_state_code, initial_state_mode, dimension):
 def basis_projector(dimension, index):
     basis = qutip.basis(dimension, index)
     return basis * basis.dag()
+
+
+def _resolve_population_selection(levels, level_index_by_id, selected_level_ids):
+    if not selected_level_ids:
+        selected_level_ids = [level['id'] for level in levels]
+
+    selection = []
+    for level_id in selected_level_ids:
+        if level_id not in level_index_by_id:
+            continue
+        level = next(level for level in levels if level['id'] == level_id)
+        selection.append(
+            {
+                'level': level,
+                'operator': basis_projector(len(levels), level_index_by_id[level_id]),
+            }
+        )
+
+    if not selection:
+        raise SimulationBuildError('Не удалось определить уровни для графиков населённостей.')
+
+    return selection
+
+
+def _build_observable_operator(definition, dimension):
+    expression = definition.get('expression', '')
+    label = definition.get('label', 'O')
+    qobj = evaluate_qutip_expression(expression)
+
+    if not qobj.isoper:
+        raise SimulationBuildError(f'Наблюдаемая `{label}` должна быть оператором QuTiP.')
+    if qobj.shape != (dimension, dimension):
+        raise SimulationBuildError(
+            f'Наблюдаемая `{label}` должна иметь размер {dimension}x{dimension}.'
+        )
+    return qobj
+
+
+def _real_series(values):
+    array = np.real_if_close(np.asarray(values))
+    if np.iscomplexobj(array):
+        return np.real(array).tolist()
+    return array.tolist()
+
+
+def _serialize_observable_series(definition, values):
+    array = np.asarray(values, dtype=complex)
+    imag_part = np.imag(array)
+    has_imag = bool(np.max(np.abs(imag_part)) > 1e-9)
+    return {
+        'label': definition.get('label', 'O'),
+        'expression': definition.get('expression', ''),
+        'real_values': np.real(array).tolist(),
+        'imag_values': imag_part.tolist(),
+        'has_imag': has_imag,
+    }
 
 
 def _to_hz(value, unit):

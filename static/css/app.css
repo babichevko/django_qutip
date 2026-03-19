@@ -246,6 +246,30 @@ h1 {
     font: inherit;
 }
 
+.form-row ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.form-row ul li label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 400;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(29, 36, 51, 0.12);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.form-row ul li input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
 .help-text {
     margin: 0;
     color: var(--muted);
@@ -494,6 +518,57 @@ h1 {
     background: rgba(22, 28, 36, 0.94);
     color: #dce8e3;
     font: 0.9rem/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.plot-card {
+    min-height: 280px;
+    margin-bottom: 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(29, 36, 51, 0.12);
+    padding: 14px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 244, 236, 0.82));
+}
+
+.plot-empty {
+    min-height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    text-align: center;
+}
+
+.plot-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.plot-axis,
+.plot-grid {
+    stroke: rgba(29, 36, 51, 0.16);
+}
+
+.plot-grid {
+    stroke-dasharray: 4 6;
+}
+
+.plot-line {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.plot-line.imaginary {
+    stroke-dasharray: 8 6;
+}
+
+.plot-label,
+.plot-legend text {
+    fill: var(--muted);
+    font-size: 12px;
 }
 
 @media (max-width: 860px) {

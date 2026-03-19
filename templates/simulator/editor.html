@@ -192,7 +192,8 @@
         <h2>Начальное состояние и эволюция</h2>
         <p class="form-intro">
             Вместо ручного ввода вероятностей теперь можно вставлять знакомые выражения QuTiP,
-            например <code>basis(2, 0)</code> или <code>fock_dm(5, 2)</code>.
+            например <code>basis(2, 0)</code> или <code>fock_dm(5, 2)</code>. Здесь же можно выбрать,
+            какие populations рисовать, и добавить произвольные операторы в <code>mesolve(..., e_ops=...)</code>.
         </p>
         <form method="post" novalidate class="app-form">
             {% csrf_token %}
@@ -242,6 +243,16 @@
                     <dt>Эрмитовость</dt>
                     <dd>{{ state_cleaned_data.qobj_summary.hermitian|yesno:'да,нет' }}</dd>
                 {% endif %}
+                <dt>Графики populations</dt>
+                <dd>
+                    {% if state_cleaned_data.plot_level_ids %}
+                        {{ state_cleaned_data.plot_level_ids|join:', ' }}
+                    {% else %}
+                        все уровни
+                    {% endif %}
+                </dd>
+                <dt>Доп. наблюдаемые</dt>
+                <dd>{{ state_cleaned_data.validated_observables|length }}</dd>
             </dl>
         </aside>
     {% endif %}
@@ -268,9 +279,10 @@
         <p class="eyebrow">Раздел 3</p>
         <h2>Результаты</h2>
         {% if latest_run and latest_run.status == 'completed' %}
+            {{ latest_run.result_json|json_script:"latest-run-data" }}
             <div class="results-grid">
                 <div>
-                    <p class="help-text">Последний запуск успешно выполнен. Ниже пока показываем численную сводку; графики добавим следующим шагом.</p>
+                    <p class="help-text">Последний запуск успешно выполнен. Теперь populations и дополнительные observables рисуются прямо на этой странице.</p>
                     <dl class="summary-list">
                         <dt>ID запуска</dt>
                         <dd>{{ latest_run.id }}</dd>
@@ -282,6 +294,23 @@
                         <dd>{{ latest_run.time_steps }}</dd>
                         <dt>Collapse operators</dt>
                         <dd>{{ latest_run.result_json.collapse_count }}</dd>
+                    </dl>
+                </div>
+                <div>
+                    <p class="eyebrow">Графики населённостей</p>
+                    <div id="population-chart" class="plot-card"></div>
+                    <p class="eyebrow">Графики наблюдаемых</p>
+                    <div id="observables-chart" class="plot-card"></div>
+                </div>
+            </div>
+            <div class="results-grid">
+                <div>
+                    <p class="eyebrow">Выбранные серии</p>
+                    <dl class="summary-list">
+                        <dt>Populations</dt>
+                        <dd>{{ latest_run.result_json.population_series|length }}</dd>
+                        <dt>Observables</dt>
+                        <dd>{{ latest_run.result_json.observable_series|length }}</dd>
                     </dl>
                 </div>
                 <div>
@@ -308,4 +337,5 @@
 
 {% block extra_scripts %}
 <script src="{% static 'js/level_editor.js' %}"></script>
+<script src="{% static 'js/results_viewer.js' %}"></script>
 {% endblock %}
