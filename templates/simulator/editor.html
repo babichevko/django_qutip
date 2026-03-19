@@ -34,7 +34,7 @@
                 <p class="help-text" id="selection-status">Выбрано: ничего</p>
             </div>
             <div class="canvas-shell">
-                <svg id="level-editor" class="level-editor-svg" viewBox="0 0 760 520" role="img" aria-label="Редактор квантовых уровней"></svg>
+                <svg id="level-editor" class="level-editor-svg" viewBox="0 0 860 520" role="img" aria-label="Редактор квантовых уровней"></svg>
             </div>
             <div class="editor-legend">
                 <span><strong>Линия</strong>: энергетический уровень</span>
@@ -57,6 +57,8 @@
             </p>
             <form method="post" novalidate class="app-form">
                 {% csrf_token %}
+                <input type="hidden" name="editor_config_json" id="system-editor-config-json" value="">
+                <input type="hidden" name="current_system_id" value="{% if current_system %}{{ current_system.id }}{% endif %}">
                 {% for field in system_form %}
                     <div class="form-row">
                         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -69,7 +71,7 @@
                         {% endif %}
                     </div>
                 {% endfor %}
-                <button class="button button-primary" type="submit" name="system_submit">Проверить систему</button>
+                <button class="button button-primary" type="submit" name="system_submit">Сохранить систему</button>
             </form>
         </section>
     </div>
@@ -161,10 +163,25 @@
             </aside>
         {% endif %}
 
+        {% if current_system %}
+            <aside class="card result-card">
+                <p class="eyebrow">Сохранение</p>
+                <h2>Текущая система в базе</h2>
+                <dl class="summary-list">
+                    <dt>ID</dt>
+                    <dd>{{ current_system.id }}</dd>
+                    <dt>Название</dt>
+                    <dd>{{ current_system.name }}</dd>
+                    <dt>Обновлено</dt>
+                    <dd>{{ current_system.updated_at|date:"d.m.Y H:i" }}</dd>
+                </dl>
+            </aside>
+        {% endif %}
+
         <aside class="card result-card">
             <p class="eyebrow">Текущее описание</p>
             <h2>JSON-конфигурация редактора</h2>
-            <textarea id="editor-json-preview" class="json-preview" readonly></textarea>
+            <textarea id="editor-json-preview" class="json-preview" readonly>{{ editor_config_json }}</textarea>
         </aside>
     </div>
 </section>
@@ -179,6 +196,11 @@
         </p>
         <form method="post" novalidate class="app-form">
             {% csrf_token %}
+            <input type="hidden" name="editor_config_json" id="state-editor-config-json" value="">
+            <input type="hidden" name="current_system_id" value="{% if current_system %}{{ current_system.id }}{% endif %}">
+            {% if state_form.non_field_errors %}
+                <div class="error-box">{{ state_form.non_field_errors }}</div>
+            {% endif %}
             {% for field in state_form %}
                 <div class="form-row">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -191,7 +213,7 @@
                     {% endif %}
                 </div>
             {% endfor %}
-            <button class="button button-primary" type="submit" name="state_submit">Проверить состояние</button>
+            <button class="button button-primary" type="submit" name="state_submit">Сохранить запуск</button>
         </form>
     </div>
     {% if state_cleaned_data %}
@@ -220,6 +242,22 @@
                     <dt>Эрмитовость</dt>
                     <dd>{{ state_cleaned_data.qobj_summary.hermitian|yesno:'да,нет' }}</dd>
                 {% endif %}
+            </dl>
+        </aside>
+    {% endif %}
+    {% if latest_run %}
+        <aside class="card result-card">
+            <p class="eyebrow">Сохранение</p>
+            <h2>Последний запуск в базе</h2>
+            <dl class="summary-list">
+                <dt>ID</dt>
+                <dd>{{ latest_run.id }}</dd>
+                <dt>Режим</dt>
+                <dd>{{ latest_run.get_initial_state_mode_display }}</dd>
+                <dt>Статус</dt>
+                <dd>{{ latest_run.get_status_display }}</dd>
+                <dt>Создан</dt>
+                <dd>{{ latest_run.created_at|date:"d.m.Y H:i" }}</dd>
             </dl>
         </aside>
     {% endif %}

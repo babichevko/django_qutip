@@ -19,11 +19,11 @@
     };
 
     const viewport = {
-        width: 760,
+        width: 860,
         height: 520,
         lineX1: 140,
-        lineX2: 470,
-        transitionBaseX: 550,
+        lineX2: 430,
+        transitionBaseX: 505,
         top: 80,
         bottom: 460,
     };
@@ -48,6 +48,8 @@
     const transitionDetuningInput = document.getElementById('selected-transition-detuning');
     const transitionDetuningUnitInput = document.getElementById('selected-transition-detuning-unit');
     const transitionPhotonInput = document.getElementById('selected-transition-photon');
+    const systemEditorConfigInput = document.getElementById('system-editor-config-json');
+    const stateEditorConfigInput = document.getElementById('state-editor-config-json');
 
     const UNIT_FACTORS = {
         Hz: 1,
@@ -522,6 +524,12 @@
                 upper_level_reference: transition.toId,
             })),
         }, null, 2);
+        if (systemEditorConfigInput) {
+            systemEditorConfigInput.value = jsonPreview.value;
+        }
+        if (stateEditorConfigInput) {
+            stateEditorConfigInput.value = jsonPreview.value;
+        }
     }
 
     function render() {
