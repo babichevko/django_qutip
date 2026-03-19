@@ -50,6 +50,9 @@
     const transitionPhotonInput = document.getElementById('selected-transition-photon');
     const systemEditorConfigInput = document.getElementById('system-editor-config-json');
     const stateEditorConfigInput = document.getElementById('state-editor-config-json');
+    const plotLevelsWidget = document.getElementById('plot-levels-widget');
+    const plotLevelsHelp = document.getElementById('plot-levels-help');
+    const observablesDimensionHelp = document.getElementById('observables-dimension-help');
 
     const UNIT_FACTORS = {
         Hz: 1,
@@ -72,6 +75,20 @@
 
     function formatNumber(value) {
         return Number.parseFloat(value).toFixed(2);
+    }
+
+    function formatCompactNumber(value) {
+        const numeric = Number.parseFloat(value);
+        if (!Number.isFinite(numeric)) {
+            return '0';
+        }
+        if (Math.abs(numeric) >= 100 || numeric === 0) {
+            return numeric.toFixed(0);
+        }
+        if (Math.abs(numeric) >= 10) {
+            return numeric.toFixed(1);
+        }
+        return numeric.toFixed(2);
     }
 
     function toHz(value, unit) {
@@ -529,6 +546,72 @@
         }
         if (stateEditorConfigInput) {
             stateEditorConfigInput.value = jsonPreview.value;
+        }
+        syncDynamicStateForm();
+    }
+
+    function syncDynamicStateForm() {
+        if (observablesDimensionHelp) {
+            const baseText = 'Один оператор на строку. Формат: `имя = выражение QuTiP` или просто выражение.';
+            const dimension = state.levels.length;
+            observablesDimensionHelp.textContent = dimension
+                ? `${baseText} Сейчас ожидается размер операторов ${dimension}x${dimension}.`
+                : `${baseText} Сначала создайте уровни в редакторе.`;
+        }
+
+        if (!plotLevelsWidget) {
+            return;
+        }
+
+        const inputName = plotLevelsWidget.dataset.inputName;
+        const checkedInputs = Array.from(plotLevelsWidget.querySelectorAll('input[type="checkbox"]:checked')).map(
+            (input) => input.value,
+        );
+        const initialSelected = (plotLevelsWidget.dataset.selected || '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean);
+        const previouslyChecked = new Set(checkedInputs.length ? checkedInputs : initialSelected);
+        const hadChoices = plotLevelsWidget.querySelectorAll('input[type="checkbox"]').length > 0;
+        const sortedLevels = [...state.levels].sort((first, second) => first.energy - second.energy);
+
+        plotLevelsWidget.replaceChildren();
+
+        if (!sortedLevels.length) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'dynamic-level-empty';
+            emptyState.textContent = 'Сначала создайте уровни в редакторе, затем здесь появится выбор для графиков populations.';
+            plotLevelsWidget.appendChild(emptyState);
+            if (plotLevelsHelp) {
+                plotLevelsHelp.textContent = 'Выбор уровней берётся из текущей конфигурации редактора.';
+            }
+            return;
+        }
+
+        sortedLevels.forEach((level) => {
+            const label = document.createElement('label');
+            label.className = 'dynamic-level-choice';
+
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.name = inputName;
+            input.value = String(level.id);
+            input.checked = hadChoices ? previouslyChecked.has(String(level.id)) : true;
+
+            const text = document.createElement('span');
+            text.textContent = `${level.label} (${formatCompactNumber(level.energy)} ${state.energyUnit})`;
+
+            label.appendChild(input);
+            label.appendChild(text);
+            plotLevelsWidget.appendChild(label);
+        });
+
+        plotLevelsWidget.dataset.selected = Array.from(plotLevelsWidget.querySelectorAll('input:checked'))
+            .map((input) => input.value)
+            .join(',');
+
+        if (plotLevelsHelp) {
+            plotLevelsHelp.textContent = `Список уровней синхронизируется с редактором. Сейчас доступно ${sortedLevels.length} уровн${sortedLevels.length === 1 ? 'я' : sortedLevels.length < 5 ? 'я' : 'ей'}.`;
         }
     }
 

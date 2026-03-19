@@ -270,6 +270,33 @@ h1 {
     margin: 0;
 }
 
+.dynamic-level-choices {
+    display: grid;
+    gap: 8px;
+}
+
+.dynamic-level-choice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(29, 36, 51, 0.12);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.dynamic-level-empty {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(29, 36, 51, 0.04);
+    color: var(--muted);
+}
+
+.dynamic-level-choice input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
 .help-text {
     margin: 0;
     color: var(--muted);

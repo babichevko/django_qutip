@@ -205,9 +205,24 @@
             {% for field in state_form %}
                 <div class="form-row">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                        <p class="help-text">{{ field.help_text }}</p>
+                    {% if field.name == 'plot_level_ids' %}
+                        <div
+                            id="plot-levels-widget"
+                            class="dynamic-level-choices"
+                            data-input-name="{{ field.html_name }}"
+                            data-selected="{% if field.value %}{{ field.value|join:',' }}{% endif %}"
+                        ></div>
+                        <p class="help-text" id="plot-levels-help">{{ field.help_text }}</p>
+                    {% else %}
+                        {{ field }}
+                        {% if field.help_text %}
+                            <p
+                                class="help-text"
+                                {% if field.name == 'observables_code' %}id="observables-dimension-help"{% endif %}
+                            >
+                                {{ field.help_text }}
+                            </p>
+                        {% endif %}
                     {% endif %}
                     {% if field.errors %}
                         <div class="field-errors">{{ field.errors }}</div>
