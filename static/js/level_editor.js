@@ -219,6 +219,17 @@
         render();
     }
 
+    function resetState() {
+        state.levels = [];
+        state.transitions = [];
+        state.selectedLevelIds = [];
+        state.selectedTransitionId = null;
+        state.draggingLevelId = null;
+        state.draggingTransitionId = null;
+        state.nextLevelId = 1;
+        state.nextTransitionId = 1;
+    }
+
     function layoutLevelsEvenly() {
         if (!state.levels.length) {
             return;
@@ -232,17 +243,68 @@
 
     function initLevelsFromForm() {
         const count = clamp(parseInt(systemLevelCount?.value || '3', 10) || 3, 2, 8);
-        state.levels = [];
-        state.transitions = [];
-        state.nextLevelId = 1;
-        state.nextTransitionId = 1;
-        clearSelection();
+        resetState();
         for (let index = 0; index < count; index += 1) {
             addLevel({ label: `|${index}>` });
         }
         layoutLevelsEvenly();
         editorStatus.textContent = `Создано ${count} уровней из параметров формы.`;
         render();
+    }
+
+    function loadEditorConfig() {
+        let parsed = {};
+        try {
+            parsed = JSON.parse(jsonPreview.value || '{}');
+        } catch (_error) {
+            parsed = {};
+        }
+
+        const levels = Array.isArray(parsed.levels) ? parsed.levels : [];
+        const transitions = Array.isArray(parsed.transitions) ? parsed.transitions : [];
+        if (!levels.length) {
+            initLevelsFromForm();
+            return;
+        }
+
+        resetState();
+        if (parsed.energy_unit) {
+            state.energyUnit = parsed.energy_unit;
+            if (systemEnergyUnit) {
+                systemEnergyUnit.value = parsed.energy_unit;
+            }
+        }
+
+        state.levels = levels.map((level, index) => ({
+            id: Number(level.id),
+            label: level.label || `|${index}>`,
+            y: Number(level.y),
+            energy: Number(level.energy),
+        }));
+
+        state.transitions = transitions.map((transition) => ({
+            id: Number(transition.id),
+            fromId: Number(transition.from_id),
+            toId: Number(transition.to_id),
+            label: transition.label || `${transition.id}`,
+            rabiValue: Number(transition.rabi_frequency ?? 0.4),
+            rabiUnit: transition.rabi_unit || 'MHz',
+            linewidthValue: Number(transition.linewidth ?? 0),
+            linewidthUnit: transition.linewidth_unit || 'MHz',
+            detuningValue: Number(transition.detuning ?? 0),
+            detuningUnit: transition.detuning_unit || 'MHz',
+            gapEnergy: 0,
+            photonEnergy: Number(transition.photon_energy ?? 0),
+        }));
+
+        state.nextLevelId = Math.max(0, ...state.levels.map((level) => level.id)) + 1;
+        state.nextTransitionId = Math.max(0, ...state.transitions.map((transition) => transition.id)) + 1;
+
+        if (systemLevelCount) {
+            systemLevelCount.value = String(state.levels.length);
+        }
+        render();
+        editorStatus.textContent = 'Редактор восстановлен из сохранённой конфигурации.';
     }
 
     function syncLevelEnergies() {
@@ -784,5 +846,5 @@
     systemEnergyUnit?.addEventListener('change', render);
     systemSpacing?.addEventListener('change', render);
 
-    initLevelsFromForm();
+    loadEditorConfig();
 })();

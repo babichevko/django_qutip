@@ -76,6 +76,18 @@ def _json_safe(value):
     return value
 
 
+def _system_initial(current_system):
+    if current_system is None:
+        return {}
+    return {
+        'name': current_system.name,
+        'notes': current_system.notes,
+        'level_count': current_system.level_count,
+        'energy_unit': current_system.energy_unit,
+        'level_spacing': current_system.level_spacing,
+    }
+
+
 def editor(request):
     system_cleaned_data = None
     state_cleaned_data = None
@@ -118,7 +130,7 @@ def editor(request):
                 current_system.save()
             latest_run = current_system.simulation_runs.first()
     elif request.method == 'POST' and 'state_submit' in request.POST:
-        system_form = QuantumSystemForm(prefix='system')
+        system_form = QuantumSystemForm(prefix='system', initial=_system_initial(current_system))
         state_form = SimulationSetupForm(
             request.POST,
             prefix='state',
@@ -178,7 +190,7 @@ def editor(request):
                     state_form.add_error(None, f'Неожиданная ошибка симуляции: {exc}')
                 latest_run.save()
     else:
-        system_form = QuantumSystemForm(prefix='system')
+        system_form = QuantumSystemForm(prefix='system', initial=_system_initial(current_system))
         state_form = SimulationSetupForm(prefix='state', level_choices=level_choices, dimension=dimension)
 
     return render(
