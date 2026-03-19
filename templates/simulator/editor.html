@@ -267,10 +267,41 @@
     <div class="card results-placeholder">
         <p class="eyebrow">Раздел 3</p>
         <h2>Результаты</h2>
-        <p>
-            Здесь позже появятся графики населённостей уровней, анимация и численные результаты QuTiP-расчёта.
-            Секция уже встроена в ту же рабочую страницу, чтобы пользователь не прыгал между вкладками.
-        </p>
+        {% if latest_run and latest_run.status == 'completed' %}
+            <div class="results-grid">
+                <div>
+                    <p class="help-text">Последний запуск успешно выполнен. Ниже пока показываем численную сводку; графики добавим следующим шагом.</p>
+                    <dl class="summary-list">
+                        <dt>ID запуска</dt>
+                        <dd>{{ latest_run.id }}</dd>
+                        <dt>Статус</dt>
+                        <dd>{{ latest_run.get_status_display }}</dd>
+                        <dt>Размерность</dt>
+                        <dd>{{ latest_run.result_json.dimension }}</dd>
+                        <dt>Шагов по времени</dt>
+                        <dd>{{ latest_run.time_steps }}</dd>
+                        <dt>Collapse operators</dt>
+                        <dd>{{ latest_run.result_json.collapse_count }}</dd>
+                    </dl>
+                </div>
+                <div>
+                    <p class="eyebrow">Численные данные</p>
+                    <textarea class="json-preview" readonly>{{ latest_run_result_json }}</textarea>
+                </div>
+            </div>
+        {% elif latest_run and latest_run.status == 'failed' %}
+            <div class="error-box">
+                Последний запуск завершился с ошибкой.
+                {% if latest_run.metadata_json.simulation_error %}
+                    {{ latest_run.metadata_json.simulation_error }}
+                {% endif %}
+            </div>
+        {% else %}
+            <p>
+                После сохранения запуска здесь появится сводка по численному результату QuTiP-расчёта.
+                На следующем шаге добавим полноценные графики населённостей.
+            </p>
+        {% endif %}
     </div>
 </section>
 {% endblock %}

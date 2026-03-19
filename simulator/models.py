@@ -6,6 +6,7 @@ class QuantumSystem(models.Model):
         ('Hz', 'Hz'),
         ('kHz', 'kHz'),
         ('MHz', 'MHz'),
+        ('GHz', 'GHz'),
     ]
 
     name = models.CharField('Название системы', max_length=120)

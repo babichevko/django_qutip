@@ -10,6 +10,7 @@ from .forms import (
     SimulationSetupForm,
 )
 from .models import QuantumSystem, SimulationRun
+from .physics import SimulationBuildError, run_simulation
 
 
 def system_list(request):
@@ -102,6 +103,25 @@ def editor(request):
                     },
                     status='draft',
                 )
+                try:
+                    latest_run.result_json = run_simulation(
+                        current_system.config_json,
+                        initial_state_code=initial_state_code,
+                        initial_state_mode=state_cleaned_data['initial_state_mode'],
+                        evolution_time=state_cleaned_data['evolution_time'],
+                        time_unit=state_cleaned_data['time_unit'],
+                        time_steps=state_cleaned_data['time_steps'],
+                    )
+                    latest_run.status = 'completed'
+                except SimulationBuildError as exc:
+                    latest_run.status = 'failed'
+                    latest_run.metadata_json['simulation_error'] = str(exc)
+                    state_form.add_error(None, str(exc))
+                except Exception as exc:
+                    latest_run.status = 'failed'
+                    latest_run.metadata_json['simulation_error'] = f'Неожиданная ошибка симуляции: {exc}'
+                    state_form.add_error(None, f'Неожиданная ошибка симуляции: {exc}')
+                latest_run.save()
     else:
         system_form = QuantumSystemForm(prefix='system')
         state_form = SimulationSetupForm(prefix='state')
@@ -119,6 +139,11 @@ def editor(request):
             'current_system': current_system,
             'latest_run': latest_run,
             'editor_config_json': json.dumps(editor_config, ensure_ascii=False, indent=2),
+            'latest_run_result_json': (
+                json.dumps(latest_run.result_json, ensure_ascii=False, indent=2)
+                if latest_run and latest_run.result_json
+                else ''
+            ),
         },
     )
 
