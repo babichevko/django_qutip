@@ -270,9 +270,6 @@
         resetState();
         if (parsed.energy_unit) {
             state.energyUnit = parsed.energy_unit;
-            if (systemEnergyUnit) {
-                systemEnergyUnit.value = parsed.energy_unit;
-            }
         }
 
         state.levels = levels.map((level, index) => ({
@@ -300,9 +297,6 @@
         state.nextLevelId = Math.max(0, ...state.levels.map((level) => level.id)) + 1;
         state.nextTransitionId = Math.max(0, ...state.transitions.map((transition) => transition.id)) + 1;
 
-        if (systemLevelCount) {
-            systemLevelCount.value = String(state.levels.length);
-        }
         render();
         editorStatus.textContent = 'Редактор восстановлен из сохранённой конфигурации.';
     }

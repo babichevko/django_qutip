@@ -15,6 +15,7 @@
         <a href="#system-config">Система</a>
         <a href="#initial-state">Начальное состояние</a>
         <a href="#results">Результаты</a>
+        <a href="{% url 'editor' %}">Новая система</a>
     </div>
 </section>
 
@@ -71,7 +72,10 @@
                         {% endif %}
                     </div>
                 {% endfor %}
-                <button class="button button-primary" type="submit" name="system_submit">Сохранить систему</button>
+                <div class="form-actions">
+                    <button class="button button-primary" type="submit" name="system_submit">Сохранить систему</button>
+                    <a class="button button-secondary" href="{% url 'editor' %}">Начать новую систему</a>
+                </div>
             </form>
         </section>
     </div>
@@ -175,6 +179,9 @@
                     <dt>Обновлено</dt>
                     <dd>{{ current_system.updated_at|date:"d.m.Y H:i" }}</dd>
                 </dl>
+                <div class="card-actions">
+                    <a class="button button-secondary" href="{% url 'editor' %}">Очистить рабочую область</a>
+                </div>
             </aside>
         {% endif %}
 

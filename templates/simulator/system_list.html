@@ -26,6 +26,9 @@
                     {% if system.notes %}
                         <p class="help-text">{{ system.notes }}</p>
                     {% endif %}
+                    <div class="card-actions">
+                        <a class="button button-secondary" href="{% url 'editor' %}?system_id={{ system.id }}">Открыть в редакторе</a>
+                    </div>
                 </article>
             {% endfor %}
         </div>
