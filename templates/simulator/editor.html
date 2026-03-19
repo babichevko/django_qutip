@@ -25,12 +25,11 @@
                 <button class="button button-secondary" type="button" id="init-levels-btn">Создать уровни из формы</button>
                 <button class="button button-secondary" type="button" id="add-level-btn">Добавить уровень</button>
                 <button class="button button-secondary" type="button" id="add-transition-btn">Связать выбранные уровни</button>
-                <button class="button button-secondary" type="button" id="auto-arrange-btn">Авторасстановка</button>
                 <button class="button button-secondary" type="button" id="delete-selected-btn">Удалить выбранное</button>
             </div>
             <div class="editor-status-row">
                 <p class="help-text" id="editor-status">
-                    Выберите или создайте уровни. Уровни можно перетаскивать только по вертикали.
+                    Выберите или создайте уровни. Уровни можно перетаскивать только по вертикали, а наконечник стрелки — по высоте.
                 </p>
                 <p class="help-text" id="selection-status">Выбрано: ничего</p>
             </div>
@@ -39,8 +38,8 @@
             </div>
             <div class="editor-legend">
                 <span><strong>Линия</strong>: энергетический уровень</span>
-                <span><strong>Стрелка</strong>: лазерный переход</span>
-                <span><strong>Толщина стрелки</strong>: частота Раби</span>
+                <span><strong>Стрелка</strong>: переход, всегда направленный вверх</span>
+                <span><strong>Кончик стрелки</strong>: детюнинг относительно верхнего уровня</span>
             </div>
         </section>
 
@@ -53,8 +52,8 @@
                 <span class="chip">line width = {{ default_transition_linewidth }}, Rabi = {{ default_rabi_frequency }}</span>
             </div>
             <p class="form-intro">
-                Поля ниже задают общую размерность и шкалу. Кнопка «Создать уровни из формы»
-                использует количество уровней и типичный зазор для первичной раскладки в редакторе.
+                Поля ниже задают только общую размерность и стартовую шкалу. Следующим шагом мы свяжем их с сохранением,
+                а источником истины для расчётов станет актуальное состояние редактора и его JSON-конфигурация.
             </p>
             <form method="post" novalidate class="app-form">
                 {% csrf_token %}
@@ -76,14 +75,10 @@
     </div>
 
     <div class="editor-side-column">
-        <aside class="card inspector-card">
-            <p class="eyebrow">Инспектор</p>
-            <h2>Свойства выбранного объекта</h2>
-            <div id="empty-selection" class="inspector-empty">
-                Выберите уровень или переход, чтобы увидеть и изменить его параметры.
-            </div>
-
-            <div id="level-inspector" class="inspector-panel" hidden>
+        <aside class="card inspector-card" id="level-inspector-card" hidden>
+            <p class="eyebrow">Инспектор уровня</p>
+            <h2>Свойства уровня</h2>
+            <div class="inspector-panel">
                 <div class="form-row">
                     <label for="selected-level-label">Подпись уровня</label>
                     <input id="selected-level-label" type="text" value="">
@@ -94,25 +89,58 @@
                     <p class="help-text">Энергия связана с вертикальным положением уровня на схеме.</p>
                 </div>
             </div>
+        </aside>
 
-            <div id="transition-inspector" class="inspector-panel" hidden>
+        <aside class="card inspector-card" id="transition-inspector-card" hidden>
+            <p class="eyebrow">Инспектор перехода</p>
+            <h2>Свойства излучения</h2>
+            <div class="inspector-panel">
                 <div class="form-row">
                     <label for="selected-transition-label">Подпись перехода</label>
                     <input id="selected-transition-label" type="text" value="">
                 </div>
                 <div class="form-row">
                     <label for="selected-transition-rabi">Частота Раби</label>
-                    <input id="selected-transition-rabi" type="range" min="0.05" max="5" step="0.05" value="0.4">
-                    <div class="value-chip" id="selected-transition-rabi-value">0.40</div>
+                    <div class="unit-field">
+                        <input id="selected-transition-rabi" type="range" min="0.01" max="1000" step="0.01" value="0.4">
+                        <select id="selected-transition-rabi-unit">
+                            <option value="Hz">Hz</option>
+                            <option value="kHz">kHz</option>
+                            <option value="MHz" selected>MHz</option>
+                            <option value="GHz">GHz</option>
+                        </select>
+                    </div>
+                    <div class="value-chip" id="selected-transition-rabi-value">0.40 MHz</div>
                 </div>
                 <div class="form-row">
                     <label for="selected-transition-linewidth">Ширина линии перехода</label>
-                    <input id="selected-transition-linewidth" type="number" min="0" step="0.01" value="0">
+                    <div class="unit-field">
+                        <input id="selected-transition-linewidth" type="number" min="0" step="0.01" value="0">
+                        <select id="selected-transition-linewidth-unit">
+                            <option value="Hz">Hz</option>
+                            <option value="kHz">kHz</option>
+                            <option value="MHz" selected>MHz</option>
+                            <option value="GHz">GHz</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label for="selected-transition-detuning">Отстройка от верхнего уровня</label>
+                    <div class="unit-field">
+                        <input id="selected-transition-detuning" type="number" step="0.01" value="0">
+                        <select id="selected-transition-detuning-unit">
+                            <option value="Hz">Hz</option>
+                            <option value="kHz">kHz</option>
+                            <option value="MHz" selected>MHz</option>
+                            <option value="GHz">GHz</option>
+                        </select>
+                    </div>
+                    <p class="help-text">Положительная отстройка поднимает кончик стрелки выше верхнего уровня.</p>
                 </div>
                 <div class="form-row">
                     <label for="selected-transition-photon">Энергия фотона</label>
                     <input id="selected-transition-photon" type="number" step="0.01" value="0">
-                    <p class="help-text">По умолчанию синхронизируется с расстоянием между уровнями.</p>
+                    <p class="help-text">Равна межуровневому зазору плюс detuning.</p>
                 </div>
             </div>
         </aside>

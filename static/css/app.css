@@ -332,6 +332,8 @@ h1 {
     overflow: hidden;
     border-radius: 22px;
     border: 1px solid rgba(29, 36, 51, 0.08);
+    user-select: none;
+    -webkit-user-select: none;
     background:
         radial-gradient(circle at 0 0, rgba(15, 118, 110, 0.08), transparent 26%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 247, 240, 0.92));
@@ -354,22 +356,31 @@ h1 {
 .transition-label {
     fill: #536074;
     font-size: 13px;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .editor-axis-label {
     font-weight: 700;
 }
 
+.level-hit-area {
+    stroke: transparent;
+    stroke-width: 24;
+    cursor: grab;
+}
+
 .energy-level {
     stroke: #1d2433;
-    stroke-width: 4;
+    stroke-width: 6;
     stroke-linecap: round;
     cursor: grab;
 }
 
 .energy-level.selected {
     stroke: #c97c1d;
-    stroke-width: 5;
+    stroke-width: 8;
 }
 
 .level-handle {
@@ -390,6 +401,28 @@ h1 {
 }
 
 .transition-arrow.selected {
+    stroke: #c97c1d;
+}
+
+.transition-tip {
+    stroke: #0f766e;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.transition-tip.selected {
+    stroke: #c97c1d;
+}
+
+.transition-tip-handle {
+    fill: #fffaf2;
+    stroke: #0f766e;
+    stroke-width: 2;
+    cursor: ns-resize;
+}
+
+.transition-tip-handle.selected {
+    fill: #fff;
     stroke: #c97c1d;
 }
 
@@ -436,6 +469,13 @@ h1 {
 .inspector-panel {
     display: grid;
     gap: 14px;
+}
+
+.unit-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 92px;
+    gap: 10px;
+    align-items: center;
 }
 
 .json-preview {

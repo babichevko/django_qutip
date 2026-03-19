@@ -10,6 +10,7 @@ ENERGY_UNIT_CHOICES = [
     ('Hz', 'Hz'),
     ('kHz', 'kHz'),
     ('MHz', 'MHz'),
+    ('GHz', 'GHz'),
 ]
 
 TIME_UNIT_CHOICES = [
