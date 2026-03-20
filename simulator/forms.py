@@ -151,6 +151,10 @@ class SimulationSetupForm(forms.Form):
         self.fields['plot_level_ids'].choices = self.level_choices
         if not self.is_bound and self.level_choices:
             self.fields['plot_level_ids'].initial = [choice[0] for choice in self.level_choices]
+        if not self.is_bound and self.dimension:
+            default_basis = f'basis({self.dimension}, 0)'
+            self.fields['state_vector_code'].initial = default_basis
+            self.fields['state_vector_code'].widget.attrs['placeholder'] = default_basis
 
     def clean(self):
         cleaned_data = super().clean()

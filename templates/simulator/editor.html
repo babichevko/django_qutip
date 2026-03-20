@@ -326,7 +326,9 @@
                             <input id="animation-slider" type="range" min="0" max="0" value="0">
                             <div class="value-chip" id="animation-time-chip">t = 0.00</div>
                         </div>
-                        <div id="population-animation" class="population-animation"></div>
+                        <div id="population-animation" class="population-animation">
+                            <div class="plot-empty">Подготовка анимации...</div>
+                        </div>
                     </div>
                     <p class="eyebrow">Графики населённостей</p>
                     <div id="population-chart" class="plot-card"></div>
@@ -367,6 +369,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/level_editor.js' %}"></script>
-<script src="{% static 'js/results_viewer.js' %}"></script>
+<script src="{% static 'js/level_editor.js' %}?v=20260321-1"></script>
+<script src="{% static 'js/results_viewer.js' %}?v=20260321-2"></script>
 {% endblock %}
