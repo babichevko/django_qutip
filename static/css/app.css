@@ -565,6 +565,41 @@ h1 {
         linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 244, 236, 0.82));
 }
 
+.animation-toolbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.population-animation {
+    min-height: 300px;
+}
+
+.population-animation-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.animation-level {
+    stroke: #1d2433;
+    stroke-linecap: round;
+}
+
+.animation-level-label,
+.animation-population-label,
+.animation-time-label {
+    fill: var(--muted);
+    font-size: 13px;
+}
+
+.animation-beam {
+    stroke: rgba(15, 118, 110, 0.45);
+    stroke-width: 3;
+}
+
 .plot-empty {
     min-height: 230px;
     display: flex;

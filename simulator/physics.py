@@ -79,10 +79,11 @@ def run_simulation(
 
     rho0 = build_initial_state(initial_state_code, initial_state_mode, dimension)
     tlist = np.linspace(0.0, evolution_time * TIME_FACTORS[time_unit], time_steps)
+    all_population_selection = _resolve_population_selection(levels, level_index_by_id, None)
     population_selection = _resolve_population_selection(levels, level_index_by_id, selected_level_ids)
     observable_defs = observables or []
 
-    e_ops = [item['operator'] for item in population_selection]
+    e_ops = [item['operator'] for item in all_population_selection]
     e_ops.extend(_build_observable_operator(item, dimension) for item in observable_defs)
 
     result = qutip.mesolve(
@@ -93,10 +94,19 @@ def run_simulation(
         e_ops=e_ops,
     )
 
-    population_expect_count = len(population_selection)
-    population_expect = result.expect[:population_expect_count]
+    population_expect_count = len(all_population_selection)
+    all_population_expect = result.expect[:population_expect_count]
     observable_expect = result.expect[population_expect_count:]
     time_axis = (tlist / TIME_FACTORS[time_unit]).tolist()
+    all_population_series = [
+        {
+            'level_id': item['level']['id'],
+            'label': item['level']['label'],
+            'values': _real_series(values),
+        }
+        for item, values in zip(all_population_selection, all_population_expect)
+    ]
+    all_population_by_id = {item['level_id']: item for item in all_population_series}
 
     return {
         'dimension': dimension,
@@ -105,13 +115,10 @@ def run_simulation(
         'level_labels': [level['label'] for level in levels],
         'level_ids': [level['id'] for level in levels],
         'population_series': [
-            {
-                'level_id': item['level']['id'],
-                'label': item['level']['label'],
-                'values': _real_series(values),
-            }
-            for item, values in zip(population_selection, population_expect)
+            all_population_by_id[item['level']['id']]
+            for item in population_selection
         ],
+        'all_population_series': all_population_series,
         'observable_series': [
             _serialize_observable_series(definition, values)
             for definition, values in zip(observable_defs, observable_expect)

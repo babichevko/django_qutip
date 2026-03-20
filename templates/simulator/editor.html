@@ -319,6 +319,15 @@
                     </dl>
                 </div>
                 <div>
+                    <p class="eyebrow">Анимация уровней</p>
+                    <div class="plot-card">
+                        <div class="animation-toolbar">
+                            <button class="button button-secondary" type="button" id="animation-toggle">Пауза</button>
+                            <input id="animation-slider" type="range" min="0" max="0" value="0">
+                            <div class="value-chip" id="animation-time-chip">t = 0.00</div>
+                        </div>
+                        <div id="population-animation" class="population-animation"></div>
+                    </div>
                     <p class="eyebrow">Графики населённостей</p>
                     <div id="population-chart" class="plot-card"></div>
                     <p class="eyebrow">Графики наблюдаемых</p>

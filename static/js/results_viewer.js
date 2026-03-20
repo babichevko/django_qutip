@@ -4,9 +4,14 @@
         return;
     }
 
+    const editorConfigNode = document.getElementById('editor-json-preview');
     const populationContainer = document.getElementById('population-chart');
     const observablesContainer = document.getElementById('observables-chart');
-    if (!populationContainer || !observablesContainer) {
+    const animationContainer = document.getElementById('population-animation');
+    const animationToggle = document.getElementById('animation-toggle');
+    const animationSlider = document.getElementById('animation-slider');
+    const animationTimeChip = document.getElementById('animation-time-chip');
+    if (!populationContainer || !observablesContainer || !animationContainer) {
         return;
     }
 
@@ -15,6 +20,13 @@
         result = JSON.parse(dataNode.textContent);
     } catch (_error) {
         return;
+    }
+
+    let editorConfig = {};
+    try {
+        editorConfig = JSON.parse(editorConfigNode?.value || '{}');
+    } catch (_error) {
+        editorConfig = {};
     }
 
     const colors = ['#0f766e', '#c97c1d', '#8b5cf6', '#dc2626', '#2563eb', '#4d7c0f', '#b45309', '#be185d'];
@@ -200,6 +212,134 @@
         container.appendChild(svg);
     }
 
+    function renderPopulationAnimation() {
+        const levelMap = new Map((editorConfig.levels || []).map((level) => [level.id, level]));
+        const animationSeries = result.all_population_series || result.population_series || [];
+        if (!animationSeries.length) {
+            createEmptyState(animationContainer, 'Нет данных populations для анимации.');
+            return;
+        }
+
+        const fallbackLevels = animationSeries.map((series, index) => ({
+            id: series.level_id,
+            label: series.label,
+            y: 360 - index * 80,
+            energy: index,
+        }));
+        const levels = (editorConfig.levels || []).length ? editorConfig.levels : fallbackLevels;
+        const transitions = editorConfig.transitions || [];
+        const orderedLevels = [...levels].sort((first, second) => first.energy - second.energy);
+        const seriesById = new Map(animationSeries.map((series) => [series.level_id, series]));
+
+        let frameIndex = 0;
+        let playing = true;
+        let lastTick = 0;
+        const maxFrame = Math.max((result.time_axis || []).length - 1, 0);
+
+        animationContainer.replaceChildren();
+        animationSlider.max = String(maxFrame);
+        animationSlider.value = '0';
+
+        const width = 760;
+        const height = 300;
+        const svg = createSvgElement('svg', {
+            viewBox: `0 0 ${width} ${height}`,
+            class: 'population-animation-svg',
+            role: 'img',
+            'aria-label': 'Анимация населённостей по уровням',
+        });
+        animationContainer.appendChild(svg);
+
+        const levelElements = orderedLevels.map((level, index) => {
+            const y = 250 - index * 58;
+            const line = createSvgElement('line', {
+                x1: 170,
+                x2: 420,
+                y1: y,
+                y2: y,
+                class: 'animation-level',
+            });
+            const label = createSvgElement('text', {
+                x: 440,
+                y: y + 5,
+                class: 'animation-level-label',
+            });
+            const population = createSvgElement('text', {
+                x: 36,
+                y: y + 5,
+                class: 'animation-population-label',
+            });
+            label.textContent = level.label || `|${index}>`;
+            svg.appendChild(line);
+            svg.appendChild(label);
+            svg.appendChild(population);
+            return { level, line, population, y };
+        });
+
+        transitions.forEach((transition, index) => {
+            const fromLevel = levelElements.find((item) => item.level.id === transition.from_id);
+            const toLevel = levelElements.find((item) => item.level.id === transition.to_id);
+            if (!fromLevel || !toLevel) {
+                return;
+            }
+            const x = 500 + (index % 3) * 46;
+            const beam = createSvgElement('line', {
+                x1: x,
+                x2: x,
+                y1: fromLevel.y,
+                y2: toLevel.y,
+                class: 'animation-beam',
+            });
+            svg.appendChild(beam);
+        });
+
+        const timeLabel = createSvgElement('text', {
+            x: 18,
+            y: 26,
+            class: 'animation-time-label',
+        });
+        svg.appendChild(timeLabel);
+
+        function updateFrame(nextFrameIndex) {
+            frameIndex = nextFrameIndex;
+            animationSlider.value = String(frameIndex);
+            const timeValue = result.time_axis?.[frameIndex] ?? 0;
+            animationTimeChip.textContent = `t = ${timeValue.toFixed(2)} ${result.time_unit}`;
+            timeLabel.textContent = `Текущее время: ${timeValue.toFixed(2)} ${result.time_unit}`;
+
+            levelElements.forEach((item) => {
+                const series = seriesById.get(item.level.id);
+                const population = series?.values?.[frameIndex] ?? 0;
+                const strokeWidth = 4 + population * 18;
+                const opacity = 0.3 + population * 0.7;
+                item.line.setAttribute('stroke-width', strokeWidth.toFixed(2));
+                item.line.setAttribute('stroke', `rgba(15, 118, 110, ${opacity.toFixed(3)})`);
+                item.population.textContent = `p = ${population.toFixed(3)}`;
+            });
+        }
+
+        function step(timestamp) {
+            if (playing && timestamp - lastTick > 120 && maxFrame > 0) {
+                lastTick = timestamp;
+                updateFrame((frameIndex + 1) % (maxFrame + 1));
+            }
+            window.requestAnimationFrame(step);
+        }
+
+        animationToggle.addEventListener('click', () => {
+            playing = !playing;
+            animationToggle.textContent = playing ? 'Пауза' : 'Пуск';
+        });
+        animationSlider.addEventListener('input', () => {
+            playing = false;
+            animationToggle.textContent = 'Пуск';
+            updateFrame(Number(animationSlider.value));
+        });
+
+        updateFrame(0);
+        window.requestAnimationFrame(step);
+    }
+
     const populationSeries = (result.population_series || []).map((series) => ({
         label: series.label,
         values: series.values || [],
@@ -223,4 +363,6 @@
         seriesList: observablesSeries,
         yLabel: 'Expectation',
     });
+
+    renderPopulationAnimation();
 })();
