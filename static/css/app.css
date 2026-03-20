@@ -577,27 +577,55 @@ h1 {
     min-height: 300px;
 }
 
-.population-animation-svg {
-    width: 100%;
-    height: auto;
-    display: block;
+.population-animation-stage {
+    display: grid;
+    gap: 14px;
 }
 
-.animation-level {
-    stroke: #1d2433;
-    stroke-linecap: round;
+.animation-row {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr) 86px;
+    align-items: center;
+    gap: 14px;
 }
 
 .animation-level-label,
 .animation-population-label,
 .animation-time-label {
-    fill: var(--muted);
+    color: var(--muted);
     font-size: 13px;
 }
 
-.animation-beam {
-    stroke: rgba(15, 118, 110, 0.45);
-    stroke-width: 3;
+.animation-level-track {
+    position: relative;
+    height: 30px;
+    display: flex;
+    align-items: center;
+}
+
+.animation-level-line {
+    width: 100%;
+    border-radius: 999px;
+    background: rgba(15, 118, 110, 0.32);
+    transition:
+        height 120ms linear,
+        background-color 120ms linear,
+        box-shadow 120ms linear;
+}
+
+.animation-transition-markers {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.animation-transition-chip {
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: rgba(15, 118, 110, 0.08);
+    color: var(--accent-strong);
+    font-size: 0.82rem;
 }
 
 .plot-empty {

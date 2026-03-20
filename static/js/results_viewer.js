@@ -213,7 +213,6 @@
     }
 
     function renderPopulationAnimation() {
-        const levelMap = new Map((editorConfig.levels || []).map((level) => [level.id, level]));
         const animationSeries = result.all_population_series || result.population_series || [];
         if (!animationSeries.length) {
             createEmptyState(animationContainer, 'Нет данных populations для анимации.');
@@ -233,72 +232,57 @@
 
         let frameIndex = 0;
         let playing = true;
-        let lastTick = 0;
+        let timerId = null;
         const maxFrame = Math.max((result.time_axis || []).length - 1, 0);
 
         animationContainer.replaceChildren();
         animationSlider.max = String(maxFrame);
         animationSlider.value = '0';
-
-        const width = 760;
-        const height = 300;
-        const svg = createSvgElement('svg', {
-            viewBox: `0 0 ${width} ${height}`,
-            class: 'population-animation-svg',
-            role: 'img',
-            'aria-label': 'Анимация населённостей по уровням',
+        const transitionMarkers = document.createElement('div');
+        transitionMarkers.className = 'animation-transition-markers';
+        transitions.forEach((transition) => {
+            const chip = document.createElement('div');
+            chip.className = 'animation-transition-chip';
+            chip.textContent = transition.label || `${transition.id}`;
+            transitionMarkers.appendChild(chip);
         });
-        animationContainer.appendChild(svg);
+        if (transitionMarkers.childElementCount) {
+            animationContainer.appendChild(transitionMarkers);
+        }
+
+        const timeLabel = document.createElement('p');
+        timeLabel.className = 'animation-time-label';
+        animationContainer.appendChild(timeLabel);
+
+        const stage = document.createElement('div');
+        stage.className = 'population-animation-stage';
+        animationContainer.appendChild(stage);
 
         const levelElements = orderedLevels.map((level, index) => {
-            const y = 250 - index * 58;
-            const line = createSvgElement('line', {
-                x1: 170,
-                x2: 420,
-                y1: y,
-                y2: y,
-                class: 'animation-level',
-            });
-            const label = createSvgElement('text', {
-                x: 440,
-                y: y + 5,
-                class: 'animation-level-label',
-            });
-            const population = createSvgElement('text', {
-                x: 36,
-                y: y + 5,
-                class: 'animation-population-label',
-            });
+            const row = document.createElement('div');
+            row.className = 'animation-row';
+
+            const label = document.createElement('div');
+            label.className = 'animation-level-label';
             label.textContent = level.label || `|${index}>`;
-            svg.appendChild(line);
-            svg.appendChild(label);
-            svg.appendChild(population);
-            return { level, line, population, y };
-        });
 
-        transitions.forEach((transition, index) => {
-            const fromLevel = levelElements.find((item) => item.level.id === transition.from_id);
-            const toLevel = levelElements.find((item) => item.level.id === transition.to_id);
-            if (!fromLevel || !toLevel) {
-                return;
-            }
-            const x = 500 + (index % 3) * 46;
-            const beam = createSvgElement('line', {
-                x1: x,
-                x2: x,
-                y1: fromLevel.y,
-                y2: toLevel.y,
-                class: 'animation-beam',
-            });
-            svg.appendChild(beam);
-        });
+            const track = document.createElement('div');
+            track.className = 'animation-level-track';
 
-        const timeLabel = createSvgElement('text', {
-            x: 18,
-            y: 26,
-            class: 'animation-time-label',
+            const line = document.createElement('div');
+            line.className = 'animation-level-line';
+            track.appendChild(line);
+
+            const population = document.createElement('div');
+            population.className = 'animation-population-label';
+
+            row.appendChild(label);
+            row.appendChild(track);
+            row.appendChild(population);
+            stage.appendChild(row);
+
+            return { level, line, population };
         });
-        svg.appendChild(timeLabel);
 
         function updateFrame(nextFrameIndex) {
             frameIndex = nextFrameIndex;
@@ -310,20 +294,25 @@
             levelElements.forEach((item) => {
                 const series = seriesById.get(item.level.id);
                 const population = series?.values?.[frameIndex] ?? 0;
-                const strokeWidth = 4 + population * 18;
-                const opacity = 0.3 + population * 0.7;
-                item.line.setAttribute('stroke-width', strokeWidth.toFixed(2));
-                item.line.setAttribute('stroke', `rgba(15, 118, 110, ${opacity.toFixed(3)})`);
+                const thickness = 4 + population * 18;
+                const opacity = 0.22 + population * 0.78;
+                item.line.style.height = `${thickness.toFixed(2)}px`;
+                item.line.style.backgroundColor = `rgba(15, 118, 110, ${opacity.toFixed(3)})`;
+                item.line.style.boxShadow = population > 0.02 ? `0 0 18px rgba(15, 118, 110, ${(opacity * 0.45).toFixed(3)})` : 'none';
                 item.population.textContent = `p = ${population.toFixed(3)}`;
             });
         }
 
-        function step(timestamp) {
-            if (playing && timestamp - lastTick > 120 && maxFrame > 0) {
-                lastTick = timestamp;
-                updateFrame((frameIndex + 1) % (maxFrame + 1));
+        function startPlayback() {
+            if (timerId !== null || maxFrame <= 0) {
+                return;
             }
-            window.requestAnimationFrame(step);
+            timerId = window.setInterval(() => {
+                if (!playing) {
+                    return;
+                }
+                updateFrame((frameIndex + 1) % (maxFrame + 1));
+            }, 140);
         }
 
         animationToggle.addEventListener('click', () => {
@@ -337,7 +326,7 @@
         });
 
         updateFrame(0);
-        window.requestAnimationFrame(step);
+        startPlayback();
     }
 
     const populationSeries = (result.population_series || []).map((series) => ({
