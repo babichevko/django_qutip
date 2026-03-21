@@ -93,12 +93,18 @@ def editor(request):
     state_cleaned_data = None
     current_system = None
     latest_run = None
+    run_history = []
 
     current_system_id = request.GET.get('system_id') or request.POST.get('current_system_id')
+    current_run_id = request.GET.get('run_id') or request.POST.get('current_run_id')
     if current_system_id:
         try:
             current_system = QuantumSystem.objects.get(pk=current_system_id)
-            latest_run = current_system.simulation_runs.first()
+            run_history = list(current_system.simulation_runs.all())
+            if current_run_id:
+                latest_run = current_system.simulation_runs.filter(pk=current_run_id).first()
+            if latest_run is None:
+                latest_run = run_history[0] if run_history else None
         except QuantumSystem.DoesNotExist:
             current_system = None
 
@@ -189,6 +195,7 @@ def editor(request):
                     latest_run.metadata_json['simulation_error'] = f'Неожиданная ошибка симуляции: {exc}'
                     state_form.add_error(None, f'Неожиданная ошибка симуляции: {exc}')
                 latest_run.save()
+                run_history = list(current_system.simulation_runs.all())
     else:
         system_form = QuantumSystemForm(prefix='system', initial=_system_initial(current_system))
         state_form = SimulationSetupForm(prefix='state', level_choices=level_choices, dimension=dimension)
@@ -205,6 +212,7 @@ def editor(request):
             'default_rabi_frequency': DEFAULT_RABI_FREQUENCY,
             'current_system': current_system,
             'latest_run': latest_run,
+            'run_history': run_history,
             'editor_config_json': json.dumps(editor_config, ensure_ascii=False, indent=2),
             'latest_run_result_json': (
                 json.dumps(latest_run.result_json, ensure_ascii=False, indent=2)

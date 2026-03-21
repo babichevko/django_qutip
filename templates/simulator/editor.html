@@ -60,6 +60,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="editor_config_json" id="system-editor-config-json" value="">
                 <input type="hidden" name="current_system_id" value="{% if current_system %}{{ current_system.id }}{% endif %}">
+                <input type="hidden" name="current_run_id" value="{% if latest_run %}{{ latest_run.id }}{% endif %}">
                 {% for field in system_form %}
                     <div class="form-row">
                         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -206,6 +207,7 @@
             {% csrf_token %}
             <input type="hidden" name="editor_config_json" id="state-editor-config-json" value="">
             <input type="hidden" name="current_system_id" value="{% if current_system %}{{ current_system.id }}{% endif %}">
+            <input type="hidden" name="current_run_id" value="{% if latest_run %}{{ latest_run.id }}{% endif %}">
             {% if state_form.non_field_errors %}
                 <div class="error-box">{{ state_form.non_field_errors }}</div>
             {% endif %}
@@ -281,7 +283,7 @@
     {% if latest_run %}
         <aside class="card result-card">
             <p class="eyebrow">Сохранение</p>
-            <h2>Последний запуск в базе</h2>
+            <h2>Выбранный запуск</h2>
             <dl class="summary-list">
                 <dt>ID</dt>
                 <dd>{{ latest_run.id }}</dd>
@@ -292,6 +294,24 @@
                 <dt>Создан</dt>
                 <dd>{{ latest_run.created_at|date:"d.m.Y H:i" }}</dd>
             </dl>
+        </aside>
+    {% endif %}
+    {% if current_system and run_history %}
+        <aside class="card result-card">
+            <p class="eyebrow">История</p>
+            <h2>Запуски системы</h2>
+            <div class="run-history-list">
+                {% for run in run_history %}
+                    <a
+                        class="run-history-item{% if latest_run and run.id == latest_run.id %} active{% endif %}"
+                        href="{% url 'editor' %}?system_id={{ current_system.id }}&run_id={{ run.id }}#results"
+                    >
+                        <strong>Run #{{ run.id }}</strong>
+                        <span>{{ run.get_status_display }}</span>
+                        <span>{{ run.created_at|date:"d.m.Y H:i" }}</span>
+                    </a>
+                {% endfor %}
+            </div>
         </aside>
     {% endif %}
 </section>

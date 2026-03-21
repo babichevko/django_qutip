@@ -669,6 +669,30 @@ h1 {
     font-size: 12px;
 }
 
+.run-history-list {
+    display: grid;
+    gap: 10px;
+}
+
+.run-history-item {
+    display: grid;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(29, 36, 51, 0.1);
+    background: rgba(255, 255, 255, 0.56);
+    color: var(--muted);
+}
+
+.run-history-item strong {
+    color: var(--ink);
+}
+
+.run-history-item.active {
+    border-color: rgba(15, 118, 110, 0.26);
+    background: rgba(15, 118, 110, 0.08);
+}
+
 @media (max-width: 860px) {
     .editor-grid {
         grid-template-columns: 1fr;
