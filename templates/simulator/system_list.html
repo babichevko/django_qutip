@@ -28,11 +28,6 @@
                     {% endif %}
                     <div class="card-actions">
                         <a class="button button-secondary" href="{% url 'editor' %}?system_id={{ system.id }}">Открыть в редакторе</a>
-                        {% with latest_run=system.simulation_runs.first %}
-                            {% if latest_run %}
-                                <a class="button button-secondary" href="{% url 'editor' %}?system_id={{ system.id }}&run_id={{ latest_run.id }}#results">Последний запуск</a>
-                            {% endif %}
-                        {% endwith %}
                     </div>
                 </article>
             {% endfor %}

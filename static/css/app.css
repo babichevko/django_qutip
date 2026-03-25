@@ -92,7 +92,7 @@ code {
 }
 
 .workspace-header {
-    padding-bottom: 16px;
+    padding-bottom: 12px;
 }
 
 .eyebrow {
@@ -110,9 +110,9 @@ h2 {
 }
 
 h1 {
-    font-size: clamp(2.2rem, 5vw, 4.5rem);
-    max-width: 12ch;
-    margin-bottom: 16px;
+    font-size: clamp(2.1rem, 4.6vw, 3.6rem);
+    max-width: 14ch;
+    margin-bottom: 12px;
 }
 
 .lead {
@@ -377,21 +377,21 @@ h1 {
 }
 
 .editor-card {
-    padding-bottom: 18px;
+    padding-bottom: 14px;
 }
 
 .editor-toolbar {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 .editor-status-row {
     display: flex;
     justify-content: space-between;
     gap: 18px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .canvas-shell {
@@ -492,15 +492,6 @@ h1 {
     stroke: #c97c1d;
 }
 
-.editor-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    color: var(--muted);
-    font-size: 0.95rem;
-    margin-top: 14px;
-}
-
 .card-headline {
     display: flex;
     justify-content: space-between;
@@ -553,6 +544,45 @@ h1 {
     background: rgba(22, 28, 36, 0.94);
     color: #dce8e3;
     font: 0.9rem/1.45 "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.workspace-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 20px;
+}
+
+.workspace-meta div {
+    display: grid;
+    gap: 4px;
+}
+
+.workspace-meta span {
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.details-card {
+    margin-top: 18px;
+    border-top: 1px solid rgba(29, 36, 51, 0.08);
+    padding-top: 16px;
+}
+
+.details-card summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--accent-strong);
+}
+
+.details-card .json-preview {
+    margin-top: 14px;
+}
+
+.subsection-title {
+    margin: 14px 0 10px;
+    font-size: 1.02rem;
 }
 
 .plot-card {
@@ -699,7 +729,8 @@ h1 {
     }
 
     .editor-status-row,
-    .card-headline {
+    .card-headline,
+    .workspace-meta {
         flex-direction: column;
     }
 }

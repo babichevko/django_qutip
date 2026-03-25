@@ -5,12 +5,7 @@
 
 {% block content %}
 <section class="page-section workspace-header">
-    <p class="eyebrow">Единая рабочая вкладка</p>
-    <h1>Редактор и настройка симуляции</h1>
-    <p class="lead">
-        Здесь собраны все основные части рабочего процесса: описание квантовой системы,
-        начальное состояние в виде QuTiP-кода и область, где будут появляться результаты расчёта.
-    </p>
+    <h1>Рабочая область</h1>
     <div class="section-nav card">
         <a href="#system-config">Система</a>
         <a href="#initial-state">Начальное состояние</a>
@@ -29,33 +24,20 @@
                 <button class="button button-secondary" type="button" id="delete-selected-btn">Удалить выбранное</button>
             </div>
             <div class="editor-status-row">
-                <p class="help-text" id="editor-status">
-                    Выберите или создайте уровни. Уровни можно перетаскивать только по вертикали, а наконечник стрелки — по высоте.
-                </p>
+                <p class="help-text" id="editor-status">Перетаскивайте уровни по вертикали, кончик стрелки меняет detuning.</p>
                 <p class="help-text" id="selection-status">Выбрано: ничего</p>
             </div>
             <div class="canvas-shell">
                 <svg id="level-editor" class="level-editor-svg" viewBox="0 0 860 520" role="img" aria-label="Редактор квантовых уровней"></svg>
-            </div>
-            <div class="editor-legend">
-                <span><strong>Линия</strong>: энергетический уровень</span>
-                <span><strong>Стрелка</strong>: переход, всегда направленный вверх</span>
-                <span><strong>Кончик стрелки</strong>: детюнинг относительно верхнего уровня</span>
             </div>
         </section>
 
         <section class="card">
             <div class="card-headline">
                 <div>
-                    <p class="eyebrow">Раздел 1</p>
                     <h2>Параметры системы</h2>
                 </div>
-                <span class="chip">line width = {{ default_transition_linewidth }}, Rabi = {{ default_rabi_frequency }}</span>
             </div>
-            <p class="form-intro">
-                Поля ниже задают только общую размерность и стартовую шкалу. Следующим шагом мы свяжем их с сохранением,
-                а источником истины для расчётов станет актуальное состояние редактора и его JSON-конфигурация.
-            </p>
             <form method="post" novalidate class="app-form">
                 {% csrf_token %}
                 <input type="hidden" name="editor_config_json" id="system-editor-config-json" value="">
@@ -82,8 +64,20 @@
     </div>
 
     <div class="editor-side-column">
+        {% if current_system %}
+            <aside class="card workspace-meta">
+                <div>
+                    <strong>{{ current_system.name }}</strong>
+                    <span>system #{{ current_system.id }}</span>
+                </div>
+                <div>
+                    <span>{{ current_system.updated_at|date:"d.m.Y H:i" }}</span>
+                    <a class="button button-secondary" href="{% url 'editor' %}">Новая система</a>
+                </div>
+            </aside>
+        {% endif %}
+
         <aside class="card inspector-card" id="level-inspector-card" hidden>
-            <p class="eyebrow">Инспектор уровня</p>
             <h2>Свойства уровня</h2>
             <div class="inspector-panel">
                 <div class="form-row">
@@ -99,7 +93,6 @@
         </aside>
 
         <aside class="card inspector-card" id="transition-inspector-card" hidden>
-            <p class="eyebrow">Инспектор перехода</p>
             <h2>Свойства излучения</h2>
             <div class="inspector-panel">
                 <div class="form-row">
@@ -151,58 +144,12 @@
                 </div>
             </div>
         </aside>
-
-        {% if system_cleaned_data %}
-            <aside class="card result-card">
-                <h2>Проверенные данные системы</h2>
-                <dl class="summary-list">
-                    <dt>Название</dt>
-                    <dd>{{ system_cleaned_data.name }}</dd>
-                    <dt>Уровни</dt>
-                    <dd>{{ system_cleaned_data.level_count }}</dd>
-                    <dt>Единицы энергии</dt>
-                    <dd>{{ system_cleaned_data.energy_unit }}</dd>
-                    <dt>Типичный зазор</dt>
-                    <dd>{{ system_cleaned_data.level_spacing }}</dd>
-                </dl>
-            </aside>
-        {% endif %}
-
-        {% if current_system %}
-            <aside class="card result-card">
-                <p class="eyebrow">Сохранение</p>
-                <h2>Текущая система в базе</h2>
-                <dl class="summary-list">
-                    <dt>ID</dt>
-                    <dd>{{ current_system.id }}</dd>
-                    <dt>Название</dt>
-                    <dd>{{ current_system.name }}</dd>
-                    <dt>Обновлено</dt>
-                    <dd>{{ current_system.updated_at|date:"d.m.Y H:i" }}</dd>
-                </dl>
-                <div class="card-actions">
-                    <a class="button button-secondary" href="{% url 'editor' %}">Очистить рабочую область</a>
-                </div>
-            </aside>
-        {% endif %}
-
-        <aside class="card result-card">
-            <p class="eyebrow">Текущее описание</p>
-            <h2>JSON-конфигурация редактора</h2>
-            <textarea id="editor-json-preview" class="json-preview" readonly>{{ editor_config_json }}</textarea>
-        </aside>
     </div>
 </section>
 
 <section class="workspace-grid workspace-grid-alt" id="initial-state">
     <div class="card">
-        <p class="eyebrow">Раздел 2</p>
         <h2>Начальное состояние и эволюция</h2>
-        <p class="form-intro">
-            Вместо ручного ввода вероятностей теперь можно вставлять знакомые выражения QuTiP,
-            например <code>basis(2, 0)</code> или <code>fock_dm(5, 2)</code>. Здесь же можно выбрать,
-            какие populations рисовать, и добавить произвольные операторы в <code>mesolve(..., e_ops=...)</code>.
-        </p>
         <form method="post" novalidate class="app-form">
             {% csrf_token %}
             <input type="hidden" name="editor_config_json" id="state-editor-config-json" value="">
@@ -240,50 +187,14 @@
             {% endfor %}
             <button class="button button-primary" type="submit" name="state_submit">Сохранить запуск</button>
         </form>
+        <details class="details-card">
+            <summary>Техническая конфигурация</summary>
+            <textarea id="editor-json-preview" class="json-preview" readonly>{{ editor_config_json }}</textarea>
+        </details>
     </div>
-    {% if state_cleaned_data %}
-        <aside class="card result-card">
-            <h2>Проверенные данные состояния</h2>
-            <dl class="summary-list">
-                <dt>Режим</dt>
-                <dd>{{ state_cleaned_data.initial_state_mode }}</dd>
-                <dt>Время</dt>
-                <dd>{{ state_cleaned_data.evolution_time }} {{ state_cleaned_data.time_unit }}</dd>
-                <dt>Шаги</dt>
-                <dd>{{ state_cleaned_data.time_steps }}</dd>
-                <dt>Тип объекта</dt>
-                <dd>{{ state_cleaned_data.qobj_summary.type }}</dd>
-                <dt>Размер</dt>
-                <dd>{{ state_cleaned_data.qobj_summary.shape }}</dd>
-                <dt>Dims</dt>
-                <dd>{{ state_cleaned_data.qobj_summary.dims }}</dd>
-                {% if state_cleaned_data.qobj_summary.norm is not None %}
-                    <dt>Норма</dt>
-                    <dd>{{ state_cleaned_data.qobj_summary.norm }}</dd>
-                {% endif %}
-                {% if state_cleaned_data.qobj_summary.trace is not None %}
-                    <dt>След</dt>
-                    <dd>{{ state_cleaned_data.qobj_summary.trace }}</dd>
-                    <dt>Эрмитовость</dt>
-                    <dd>{{ state_cleaned_data.qobj_summary.hermitian|yesno:'да,нет' }}</dd>
-                {% endif %}
-                <dt>Графики populations</dt>
-                <dd>
-                    {% if state_cleaned_data.plot_level_ids %}
-                        {{ state_cleaned_data.plot_level_ids|join:', ' }}
-                    {% else %}
-                        все уровни
-                    {% endif %}
-                </dd>
-                <dt>Доп. наблюдаемые</dt>
-                <dd>{{ state_cleaned_data.validated_observables|length }}</dd>
-            </dl>
-        </aside>
-    {% endif %}
     {% if latest_run %}
         <aside class="card result-card">
-            <p class="eyebrow">Сохранение</p>
-            <h2>Выбранный запуск</h2>
+            <h2>Текущий запуск</h2>
             <dl class="summary-list">
                 <dt>ID</dt>
                 <dd>{{ latest_run.id }}</dd>
@@ -298,7 +209,6 @@
     {% endif %}
     {% if current_system and run_history %}
         <aside class="card result-card">
-            <p class="eyebrow">История</p>
             <h2>Запуски системы</h2>
             <div class="run-history-list">
                 {% for run in run_history %}
@@ -318,13 +228,12 @@
 
 <section class="page-section" id="results">
     <div class="card results-placeholder">
-        <p class="eyebrow">Раздел 3</p>
         <h2>Результаты</h2>
         {% if latest_run and latest_run.status == 'completed' %}
             {{ latest_run.result_json|json_script:"latest-run-data" }}
             <div class="results-grid">
                 <div>
-                    <p class="help-text">Последний запуск успешно выполнен. Теперь populations и дополнительные observables рисуются прямо на этой странице.</p>
+                    <p class="help-text">Размерность {{ latest_run.result_json.dimension }}, {{ latest_run.time_steps }} шагов, collapse operators: {{ latest_run.result_json.collapse_count }}.</p>
                     <dl class="summary-list">
                         <dt>ID запуска</dt>
                         <dd>{{ latest_run.id }}</dd>
@@ -339,7 +248,7 @@
                     </dl>
                 </div>
                 <div>
-                    <p class="eyebrow">Анимация уровней</p>
+                    <h3 class="subsection-title">Анимация уровней</h3>
                     <div class="plot-card">
                         <div class="animation-toolbar">
                             <button class="button button-secondary" type="button" id="animation-toggle">Пауза</button>
@@ -350,39 +259,25 @@
                             <div class="plot-empty">Подготовка анимации...</div>
                         </div>
                     </div>
-                    <p class="eyebrow">Графики населённостей</p>
+                    <h3 class="subsection-title">Населённости</h3>
                     <div id="population-chart" class="plot-card"></div>
-                    <p class="eyebrow">Графики наблюдаемых</p>
+                    <h3 class="subsection-title">Наблюдаемые</h3>
                     <div id="observables-chart" class="plot-card"></div>
                 </div>
             </div>
-            <div class="results-grid">
-                <div>
-                    <p class="eyebrow">Выбранные серии</p>
-                    <dl class="summary-list">
-                        <dt>Populations</dt>
-                        <dd>{{ latest_run.result_json.population_series|length }}</dd>
-                        <dt>Observables</dt>
-                        <dd>{{ latest_run.result_json.observable_series|length }}</dd>
-                    </dl>
-                </div>
-                <div>
-                    <p class="eyebrow">Численные данные</p>
-                    <textarea class="json-preview" readonly>{{ latest_run_result_json }}</textarea>
-                </div>
-            </div>
+            <details class="details-card">
+                <summary>Подробные численные данные</summary>
+                <textarea class="json-preview" readonly>{{ latest_run_result_json }}</textarea>
+            </details>
         {% elif latest_run and latest_run.status == 'failed' %}
             <div class="error-box">
-                Последний запуск завершился с ошибкой.
+                Запуск завершился с ошибкой.
                 {% if latest_run.metadata_json.simulation_error %}
                     {{ latest_run.metadata_json.simulation_error }}
                 {% endif %}
             </div>
         {% else %}
-            <p>
-                После сохранения запуска здесь появится сводка по численному результату QuTiP-расчёта.
-                На следующем шаге добавим полноценные графики населённостей.
-            </p>
+            <p>После запуска здесь появятся анимация и графики.</p>
         {% endif %}
     </div>
 </section>
