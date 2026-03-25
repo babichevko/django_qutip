@@ -34,6 +34,7 @@ def run_simulation(
     time_steps,
     selected_level_ids=None,
     observables=None,
+    custom_collapse_operators=None,
 ):
     levels = sorted(config.get('levels', []), key=lambda item: item['energy'])
     transitions = config.get('transitions', [])
@@ -47,6 +48,18 @@ def run_simulation(
 
     hamiltonian = qutip.Qobj(np.zeros((dimension, dimension), dtype=complex))
     collapse_operators = []
+    frame_offsets_hz, frame_warnings = _build_rotating_frame_offsets(
+        levels=levels,
+        transitions=transitions,
+        level_index_by_id=level_index_by_id,
+        energies_hz=energies_hz,
+        energy_unit=config.get('energy_unit', 'MHz'),
+    )
+
+    for level, energy_hz in zip(levels, energies_hz):
+        level_index = level_index_by_id[level['id']]
+        residual_hz = energy_hz - frame_offsets_hz[level_index]
+        hamiltonian += (2 * math.pi * residual_hz) * basis_projector(dimension, level_index)
 
     for transition in transitions:
         from_id = transition.get('from_id')
@@ -60,22 +73,21 @@ def run_simulation(
         if energies_hz[lower_index] > energies_hz[upper_index]:
             lower_index, upper_index = upper_index, lower_index
 
-        gap_hz = energies_hz[upper_index] - energies_hz[lower_index]
-        photon_hz = _transition_photon_hz(transition, config.get('energy_unit', 'MHz'))
-        detuning_hz = photon_hz - gap_hz
         rabi_hz = _transition_rabi_hz(transition)
         linewidth_hz = _transition_linewidth_hz(transition)
 
-        projector_upper = basis_projector(dimension, upper_index)
         exchange = qutip.basis(dimension, lower_index) * qutip.basis(dimension, upper_index).dag()
 
-        # RWA with frequencies provided in Hz: convert to angular frequencies via 2*pi.
-        hamiltonian += (-2 * math.pi * detuning_hz) * projector_upper
+        # Multi-drive RWA in an explicit rotating frame. Diagonal residuals are added above.
         hamiltonian += (math.pi * rabi_hz) * (exchange + exchange.dag())
 
         if linewidth_hz > 0:
             gamma = 2 * math.pi * linewidth_hz
             collapse_operators.append(math.sqrt(gamma) * exchange)
+
+    custom_collapse_defs = custom_collapse_operators or []
+    for definition in custom_collapse_defs:
+        collapse_operators.append(_build_observable_operator(definition, dimension))
 
     rho0 = build_initial_state(initial_state_code, initial_state_mode, dimension)
     tlist = np.linspace(0.0, evolution_time * TIME_FACTORS[time_unit], time_steps)
@@ -125,6 +137,14 @@ def run_simulation(
         ],
         'hamiltonian_shape': list(hamiltonian.shape),
         'collapse_count': len(collapse_operators),
+        'auto_collapse_count': len(collapse_operators) - len(custom_collapse_defs),
+        'custom_collapse_count': len(custom_collapse_defs),
+        'frame_level_offsets_hz': [float(value) for value in frame_offsets_hz],
+        'frame_level_residuals_hz': [
+            float(energies_hz[index] - frame_offsets_hz[index])
+            for index in range(dimension)
+        ],
+        'frame_warnings': frame_warnings,
     }
 
 
@@ -149,6 +169,52 @@ def build_initial_state(initial_state_code, initial_state_mode, dimension):
 def basis_projector(dimension, index):
     basis = qutip.basis(dimension, index)
     return basis * basis.dag()
+
+
+def _build_rotating_frame_offsets(levels, transitions, level_index_by_id, energies_hz, energy_unit):
+    adjacency = {index: [] for index in range(len(levels))}
+    for transition in transitions:
+        from_id = transition.get('from_id')
+        to_id = transition.get('to_id')
+        if from_id not in level_index_by_id or to_id not in level_index_by_id:
+            continue
+
+        first_index = level_index_by_id[from_id]
+        second_index = level_index_by_id[to_id]
+        photon_hz = _transition_photon_hz(transition, energy_unit)
+
+        lower_index = first_index
+        upper_index = second_index
+        if energies_hz[first_index] > energies_hz[second_index]:
+            lower_index, upper_index = second_index, first_index
+
+        adjacency[lower_index].append((upper_index, photon_hz))
+        adjacency[upper_index].append((lower_index, -photon_hz))
+
+    offsets = [None] * len(levels)
+    warnings = []
+    tolerance_hz = 1e-3
+
+    order = sorted(range(len(levels)), key=lambda index: energies_hz[index])
+    for seed_index in order:
+        if offsets[seed_index] is not None:
+            continue
+        offsets[seed_index] = energies_hz[seed_index]
+        stack = [seed_index]
+
+        while stack:
+            current = stack.pop()
+            for neighbor, delta_hz in adjacency[current]:
+                expected = offsets[current] + delta_hz
+                if offsets[neighbor] is None:
+                    offsets[neighbor] = expected
+                    stack.append(neighbor)
+                elif abs(offsets[neighbor] - expected) > tolerance_hz:
+                    warnings.append(
+                        f'Frame inconsistency between levels {levels[current]["label"]} and {levels[neighbor]["label"]}.'
+                    )
+
+    return [offset if offset is not None else energies_hz[index] for index, offset in enumerate(offsets)], warnings
 
 
 def _resolve_population_selection(levels, level_index_by_id, selected_level_ids):

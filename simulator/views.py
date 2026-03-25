@@ -1,7 +1,10 @@
 import json
+import csv
 
-from django.shortcuts import redirect, render
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.text import slugify
 
 from .forms import (
     DEFAULT_RABI_FREQUENCY,
@@ -171,6 +174,7 @@ def editor(request):
                         'editor_config': editor_config,
                         'selected_level_ids': state_cleaned_data.get('plot_level_ids', []),
                         'observables': _json_safe(state_cleaned_data.get('validated_observables', [])),
+                        'collapse_operators': _json_safe(state_cleaned_data.get('validated_collapse_operators', [])),
                     },
                     status='draft',
                 )
@@ -184,6 +188,7 @@ def editor(request):
                         time_steps=state_cleaned_data['time_steps'],
                         selected_level_ids=state_cleaned_data.get('plot_level_ids', []),
                         observables=state_cleaned_data.get('validated_observables', []),
+                        custom_collapse_operators=state_cleaned_data.get('validated_collapse_operators', []),
                     )
                     latest_run.status = 'completed'
                 except SimulationBuildError as exc:
@@ -200,6 +205,15 @@ def editor(request):
         system_form = QuantumSystemForm(prefix='system', initial=_system_initial(current_system))
         state_form = SimulationSetupForm(prefix='state', level_choices=level_choices, dimension=dimension)
 
+    frame_rows = []
+    if latest_run and latest_run.result_json:
+        labels = latest_run.result_json.get('level_labels', [])
+        residuals = latest_run.result_json.get('frame_level_residuals_hz', [])
+        frame_rows = [
+            {'label': label, 'residual_hz': residual}
+            for label, residual in zip(labels, residuals)
+        ]
+
     return render(
         request,
         'simulator/editor.html',
@@ -213,6 +227,7 @@ def editor(request):
             'current_system': current_system,
             'latest_run': latest_run,
             'run_history': run_history,
+            'frame_rows': frame_rows,
             'editor_config_json': json.dumps(editor_config, ensure_ascii=False, indent=2),
             'latest_run_result_json': (
                 json.dumps(latest_run.result_json, ensure_ascii=False, indent=2)
@@ -221,6 +236,59 @@ def editor(request):
             ),
         },
     )
+
+
+def export_system_config(request, system_id):
+    system = get_object_or_404(QuantumSystem, pk=system_id)
+    response = HttpResponse(
+        json.dumps(system.config_json, ensure_ascii=False, indent=2),
+        content_type='application/json; charset=utf-8',
+    )
+    filename = f'{slugify(system.name) or "quantum-system"}-config.json'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def export_run_result_json(request, run_id):
+    run = get_object_or_404(SimulationRun, pk=run_id)
+    response = HttpResponse(
+        json.dumps(run.result_json, ensure_ascii=False, indent=2),
+        content_type='application/json; charset=utf-8',
+    )
+    filename = f'{slugify(run.system.name) or "quantum-system"}-run-{run.id}.json'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+def export_run_result_csv(request, run_id):
+    run = get_object_or_404(SimulationRun, pk=run_id)
+    result = run.result_json or {}
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    filename = f'{slugify(run.system.name) or "quantum-system"}-run-{run.id}.csv'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    header = ['time']
+    for series in result.get('population_series', []):
+        header.append(f'population::{series["label"]}')
+    for series in result.get('observable_series', []):
+        header.append(f'observable::{series["label"]}::real')
+        if series.get('has_imag'):
+            header.append(f'observable::{series["label"]}::imag')
+    writer.writerow(header)
+
+    time_axis = result.get('time_axis', [])
+    for index, time_value in enumerate(time_axis):
+        row = [time_value]
+        for series in result.get('population_series', []):
+            row.append(series.get('values', [])[index])
+        for series in result.get('observable_series', []):
+            row.append(series.get('real_values', [])[index])
+            if series.get('has_imag'):
+                row.append(series.get('imag_values', [])[index])
+        writer.writerow(row)
+
+    return response
 
 
 def state_setup(request):

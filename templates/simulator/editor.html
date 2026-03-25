@@ -72,6 +72,7 @@
                 </div>
                 <div>
                     <span>{{ current_system.updated_at|date:"d.m.Y H:i" }}</span>
+                    <a class="button button-secondary" href="{% url 'export_system_config' current_system.id %}">Экспорт JSON</a>
                     <a class="button button-secondary" href="{% url 'editor' %}">Новая система</a>
                 </div>
             </aside>
@@ -159,6 +160,7 @@
                 <div class="error-box">{{ state_form.non_field_errors }}</div>
             {% endif %}
             {% for field in state_form %}
+                {% if field.name != 'observables_code' and field.name != 'collapse_operators_code' %}
                 <div class="form-row">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {% if field.name == 'plot_level_ids' %}
@@ -184,7 +186,33 @@
                         <div class="field-errors">{{ field.errors }}</div>
                     {% endif %}
                 </div>
+                {% endif %}
             {% endfor %}
+            <details class="details-card">
+                <summary>Расширенные расчёты</summary>
+                <div class="advanced-grid">
+                    <div class="form-row">
+                        <label for="{{ state_form.observables_code.id_for_label }}">{{ state_form.observables_code.label }}</label>
+                        {{ state_form.observables_code }}
+                        {% if state_form.observables_code.help_text %}
+                            <p class="help-text" id="observables-dimension-help">{{ state_form.observables_code.help_text }}</p>
+                        {% endif %}
+                        {% if state_form.observables_code.errors %}
+                            <div class="field-errors">{{ state_form.observables_code.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ state_form.collapse_operators_code.id_for_label }}">{{ state_form.collapse_operators_code.label }}</label>
+                        {{ state_form.collapse_operators_code }}
+                        {% if state_form.collapse_operators_code.help_text %}
+                            <p class="help-text">{{ state_form.collapse_operators_code.help_text }}</p>
+                        {% endif %}
+                        {% if state_form.collapse_operators_code.errors %}
+                            <div class="field-errors">{{ state_form.collapse_operators_code.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </details>
             <button class="button button-primary" type="submit" name="state_submit">Сохранить запуск</button>
         </form>
         <details class="details-card">
@@ -205,6 +233,10 @@
                 <dt>Создан</dt>
                 <dd>{{ latest_run.created_at|date:"d.m.Y H:i" }}</dd>
             </dl>
+            <div class="card-actions">
+                <a class="button button-secondary" href="{% url 'export_run_result_json' latest_run.id %}">Экспорт JSON</a>
+                <a class="button button-secondary" href="{% url 'export_run_result_csv' latest_run.id %}">Экспорт CSV</a>
+            </div>
         </aside>
     {% endif %}
     {% if current_system and run_history %}
@@ -245,7 +277,27 @@
                         <dd>{{ latest_run.time_steps }}</dd>
                         <dt>Collapse operators</dt>
                         <dd>{{ latest_run.result_json.collapse_count }}</dd>
+                        <dt>Авто decay</dt>
+                        <dd>{{ latest_run.result_json.auto_collapse_count }}</dd>
+                        <dt>Custom collapse</dt>
+                        <dd>{{ latest_run.result_json.custom_collapse_count }}</dd>
                     </dl>
+                    <details class="details-card">
+                        <summary>Rotating frame</summary>
+                        <dl class="summary-list">
+                            {% for row in frame_rows %}
+                                <dt>{{ row.label }}</dt>
+                                <dd>{{ row.residual_hz }} Hz</dd>
+                            {% endfor %}
+                        </dl>
+                        {% if latest_run.result_json.frame_warnings %}
+                            <div class="error-box">
+                                {% for warning in latest_run.result_json.frame_warnings %}
+                                    <div>{{ warning }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </details>
                 </div>
                 <div>
                     <h3 class="subsection-title">Анимация уровней</h3>

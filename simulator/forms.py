@@ -143,6 +143,17 @@ class SimulationSetupForm(forms.Form):
         ),
         help_text='Один оператор на строку. Формат: `имя = выражение QuTiP` или просто выражение.',
     )
+    collapse_operators_code = forms.CharField(
+        label='Дополнительные collapse operators',
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                'rows': 5,
+                'placeholder': 'c01 = np.sqrt(2 * np.pi * 0.2e6) * basis(3, 0) * basis(3, 1).dag()',
+            }
+        ),
+        help_text='Один оператор на строку. Используйте полный оператор QuTiP, включая коэффициент перед ним.',
+    )
 
     def __init__(self, *args, level_choices=None, dimension=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -162,6 +173,7 @@ class SimulationSetupForm(forms.Form):
         vector_code = (cleaned_data.get('state_vector_code') or '').strip()
         density_code = (cleaned_data.get('density_matrix_code') or '').strip()
         observables_code = (cleaned_data.get('observables_code') or '').strip()
+        collapse_operators_code = (cleaned_data.get('collapse_operators_code') or '').strip()
 
         if mode == 'state_vector':
             if not vector_code:
@@ -186,9 +198,24 @@ class SimulationSetupForm(forms.Form):
                     self._validate_density_matrix(qobj)
 
         if observables_code:
-            cleaned_data['validated_observables'] = self._validate_observables(observables_code)
+            cleaned_data['validated_observables'] = self._validate_operator_definitions(
+                raw_value=observables_code,
+                field_name='observables_code',
+                default_prefix='O',
+                role_label='Оператор',
+            )
         else:
             cleaned_data['validated_observables'] = []
+
+        if collapse_operators_code:
+            cleaned_data['validated_collapse_operators'] = self._validate_operator_definitions(
+                raw_value=collapse_operators_code,
+                field_name='collapse_operators_code',
+                default_prefix='C',
+                role_label='Collapse operator',
+            )
+        else:
+            cleaned_data['validated_collapse_operators'] = []
 
         if cleaned_data.get('evolution_time') == 0:
             self.add_error('evolution_time', 'Длительность эволюции должна быть больше нуля.')
@@ -261,8 +288,8 @@ class SimulationSetupForm(forms.Form):
                 f'Матрица плотности должна иметь размер {self.dimension}x{self.dimension}.',
             )
 
-    def _validate_observables(self, raw_value):
-        observables = []
+    def _validate_operator_definitions(self, raw_value, field_name, default_prefix, role_label):
+        operators = []
         for index, line in enumerate(raw_value.splitlines(), start=1):
             stripped = line.strip()
             if not stripped:
@@ -271,32 +298,32 @@ class SimulationSetupForm(forms.Form):
             if '=' in stripped:
                 label, expression = [part.strip() for part in stripped.split('=', 1)]
             else:
-                label, expression = f'O{index}', stripped
+                label, expression = f'{default_prefix}{index}', stripped
 
             try:
                 qobj = evaluate_qutip_expression(expression)
             except QutipExpressionError as exc:
                 self.add_error(
-                    'observables_code',
-                    f'Ошибка в операторе `{label}`: {exc}',
+                    field_name,
+                    f'Ошибка в `{label}`: {exc}',
                 )
                 continue
 
             if not qobj.isoper:
                 self.add_error(
-                    'observables_code',
-                    f'Оператор `{label}` должен быть оператором QuTiP, а не вектором.',
+                    field_name,
+                    f'{role_label} `{label}` должен быть оператором QuTiP, а не вектором.',
                 )
                 continue
 
             if self.dimension is not None and qobj.shape != (self.dimension, self.dimension):
                 self.add_error(
-                    'observables_code',
-                    f'Оператор `{label}` должен иметь размер {self.dimension}x{self.dimension}.',
+                    field_name,
+                    f'{role_label} `{label}` должен иметь размер {self.dimension}x{self.dimension}.',
                 )
                 continue
 
-            observables.append(
+            operators.append(
                 {
                     'label': label,
                     'expression': expression,
@@ -304,7 +331,7 @@ class SimulationSetupForm(forms.Form):
                 }
             )
 
-        return observables
+        return operators
 
     def _build_summary(self, qobj):
         summary = {
