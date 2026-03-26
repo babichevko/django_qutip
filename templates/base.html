@@ -24,6 +24,19 @@
     <main class="container">
         {% block content %}{% endblock %}
     </main>
+    <footer class="site-footer">
+        <div class="container footer-row">
+            <div>
+                <strong>QuTiP UI Lab</strong>
+                <p>Локальный интерфейс для настройки квантовых систем, расчётов QuTiP и анализа результатов.</p>
+            </div>
+            <div class="footer-links">
+                <a href="{% url 'editor' %}">Рабочая область</a>
+                <a href="{% url 'system_list' %}">Сохранённые системы</a>
+                <a href="{% url 'help' %}">Справка</a>
+            </div>
+        </div>
+    </footer>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

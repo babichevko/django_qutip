@@ -74,6 +74,36 @@ code {
     color: var(--accent-strong);
 }
 
+.site-footer {
+    margin-top: 36px;
+    border-top: 1px solid var(--line);
+    background: rgba(247, 242, 233, 0.68);
+}
+
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 24px 0 38px;
+}
+
+.footer-row p {
+    margin: 8px 0 0;
+    max-width: 56ch;
+    color: var(--muted);
+}
+
+.footer-links {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    color: var(--muted);
+}
+
+.footer-links a:hover {
+    color: var(--accent-strong);
+}
+
 .hero,
 .grid-two,
 .workspace-grid {
@@ -181,6 +211,26 @@ h1 {
 
 .grid-two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compact-section {
+    padding-top: 8px;
+}
+
+.feature-list {
+    display: grid;
+    gap: 10px 14px;
+    grid-template-columns: max-content 1fr;
+    margin: 0;
+}
+
+.feature-list dt {
+    font-weight: 700;
+}
+
+.feature-list dd {
+    margin: 0;
+    color: var(--muted);
 }
 
 .systems-grid {
@@ -736,7 +786,8 @@ h1 {
 
     .editor-status-row,
     .card-headline,
-    .workspace-meta {
+    .workspace-meta,
+    .footer-row {
         flex-direction: column;
     }
 }

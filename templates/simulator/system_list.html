@@ -4,7 +4,7 @@
 
 {% block content %}
 <section class="page-section">
-    <p class="eyebrow">Страница вывода</p>
+    <p class="eyebrow">Библиотека систем</p>
     <h1>Сохранённые квантовые системы</h1>
     {% if systems %}
         <div class="systems-grid">
@@ -34,7 +34,10 @@
         </div>
     {% else %}
         <div class="card">
-            <p>Пока сохранённых систем нет. На следующем шаге мы свяжем формы с этой базой данных.</p>
+            <p>Пока сохранённых систем нет.</p>
+            <div class="card-actions">
+                <a class="button button-primary" href="{% url 'editor' %}">Создать первую систему</a>
+            </div>
         </div>
     {% endif %}
 </section>
