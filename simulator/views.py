@@ -210,7 +210,7 @@ def editor(request):
         labels = latest_run.result_json.get('level_labels', [])
         residuals = latest_run.result_json.get('frame_level_residuals_hz', [])
         frame_rows = [
-            {'label': label, 'residual_hz': residual}
+            {'label': label, 'residual_hz': round(float(residual), 3)}
             for label, residual in zip(labels, residuals)
         ]
 

@@ -10,7 +10,7 @@
         <a href="#system-config">Система</a>
         <a href="#initial-state">Начальное состояние</a>
         <a href="#results">Результаты</a>
-        <a href="{% url 'editor' %}">Новая система</a>
+        <a href="{% url 'editor' %}">Создать новую систему</a>
     </div>
 </section>
 
@@ -57,7 +57,7 @@
                 {% endfor %}
                 <div class="form-actions">
                     <button class="button button-primary" type="submit" name="system_submit">Сохранить систему</button>
-                    <a class="button button-secondary" href="{% url 'editor' %}">Начать новую систему</a>
+                    <a class="button button-secondary" href="{% url 'editor' %}">Создать новую систему</a>
                 </div>
             </form>
         </section>
@@ -68,12 +68,11 @@
             <aside class="card workspace-meta">
                 <div>
                     <strong>{{ current_system.name }}</strong>
-                    <span>system #{{ current_system.id }}</span>
                 </div>
                 <div>
                     <span>{{ current_system.updated_at|date:"d.m.Y H:i" }}</span>
                     <a class="button button-secondary" href="{% url 'export_system_config' current_system.id %}">Экспорт JSON</a>
-                    <a class="button button-secondary" href="{% url 'editor' %}">Новая система</a>
+                    <a class="button button-secondary" href="{% url 'editor' %}">Создать новую систему</a>
                 </div>
             </aside>
         {% endif %}
@@ -277,9 +276,9 @@
                         <dd>{{ latest_run.time_steps }}</dd>
                         <dt>Collapse operators</dt>
                         <dd>{{ latest_run.result_json.collapse_count }}</dd>
-                        <dt>Авто decay</dt>
+                        <dt>Автоматические каналы распада</dt>
                         <dd>{{ latest_run.result_json.auto_collapse_count }}</dd>
-                        <dt>Custom collapse</dt>
+                        <dt>Пользовательские collapse operators</dt>
                         <dd>{{ latest_run.result_json.custom_collapse_count }}</dd>
                     </dl>
                     <details class="details-card">
