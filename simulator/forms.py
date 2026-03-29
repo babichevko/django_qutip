@@ -1,3 +1,5 @@
+"""Django forms for quantum system setup and QuTiP simulation input."""
+
 from django import forms
 
 from .qutip_eval import QutipExpressionError, evaluate_qutip_expression
@@ -27,6 +29,8 @@ INITIAL_STATE_MODE_CHOICES = [
 
 
 class QuantumSystemForm(forms.Form):
+    """Collect high-level metadata and defaults for a quantum system."""
+
     name = forms.CharField(
         label='Название системы',
         max_length=120,
@@ -71,6 +75,8 @@ class QuantumSystemForm(forms.Form):
 
 
 class SimulationSetupForm(forms.Form):
+    """Collect the initial state, evolution settings, and advanced operators."""
+
     plot_level_ids = forms.MultipleChoiceField(
         label='Уровни для графиков населённостей',
         required=False,

@@ -1,3 +1,5 @@
+"""Admin registration for simulator models."""
+
 from django.contrib import admin
 
 from .models import QuantumSystem, SimulationRun
@@ -5,6 +7,8 @@ from .models import QuantumSystem, SimulationRun
 
 @admin.register(QuantumSystem)
 class QuantumSystemAdmin(admin.ModelAdmin):
+    """Admin presentation for saved quantum systems."""
+
     list_display = ('name', 'level_count', 'energy_unit', 'updated_at')
     list_filter = ('energy_unit', 'level_count')
     search_fields = ('name', 'notes')
@@ -13,6 +17,8 @@ class QuantumSystemAdmin(admin.ModelAdmin):
 
 @admin.register(SimulationRun)
 class SimulationRunAdmin(admin.ModelAdmin):
+    """Admin presentation for simulation runs."""
+
     list_display = (
         'system',
         'initial_state_mode',

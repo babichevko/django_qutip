@@ -1,3 +1,5 @@
+"""Helpers for translating editor data into QuTiP simulations."""
+
 import math
 
 import numpy as np
@@ -22,6 +24,8 @@ TIME_FACTORS = {
 
 
 class SimulationBuildError(ValueError):
+    """Raised when the editor configuration cannot be turned into a valid simulation."""
+
     pass
 
 
@@ -36,6 +40,8 @@ def run_simulation(
     observables=None,
     custom_collapse_operators=None,
 ):
+    """Build the RWA model from editor data, run QuTiP, and serialize the result."""
+
     levels = sorted(config.get('levels', []), key=lambda item: item['energy'])
     transitions = config.get('transitions', [])
 
@@ -149,6 +155,8 @@ def run_simulation(
 
 
 def build_initial_state(initial_state_code, initial_state_mode, dimension):
+    """Build and validate the initial QuTiP state for the requested dimension."""
+
     qobj = evaluate_qutip_expression(initial_state_code)
 
     if initial_state_mode == 'state_vector':
@@ -167,11 +175,15 @@ def build_initial_state(initial_state_code, initial_state_mode, dimension):
 
 
 def basis_projector(dimension, index):
+    """Return the projector onto a basis state."""
+
     basis = qutip.basis(dimension, index)
     return basis * basis.dag()
 
 
 def _build_rotating_frame_offsets(levels, transitions, level_index_by_id, energies_hz, energy_unit):
+    """Infer level frame offsets from the set of configured drives."""
+
     adjacency = {index: [] for index in range(len(levels))}
     for transition in transitions:
         from_id = transition.get('from_id')

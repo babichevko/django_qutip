@@ -1,3 +1,5 @@
+"""Safe evaluation helpers for QuTiP expressions entered by the user."""
+
 import ast
 import math
 import warnings
@@ -51,6 +53,8 @@ _ALLOWED_NODES = (
 
 
 class QutipExpressionError(ValueError):
+    """Raised when a QuTiP expression cannot be validated or evaluated safely."""
+
     pass
 
 
@@ -72,6 +76,8 @@ SAFE_NAMESPACE.update(
 
 
 def evaluate_qutip_expression(expression):
+    """Safely evaluate a restricted QuTiP expression and return a Qobj."""
+
     try:
         tree = ast.parse(expression, mode='eval')
     except SyntaxError as exc:
@@ -91,6 +97,8 @@ def evaluate_qutip_expression(expression):
 
 
 def _validate_ast(node):
+    """Validate that the parsed AST uses only approved nodes and attributes."""
+
     for child in ast.walk(node):
         if not isinstance(child, _ALLOWED_NODES):
             raise QutipExpressionError('В выражении используются неподдерживаемые конструкции Python.')

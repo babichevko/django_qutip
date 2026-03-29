@@ -1,3 +1,5 @@
+"""Views for system editing, simulation runs, and result export."""
+
 import json
 import csv
 
@@ -17,6 +19,8 @@ from .physics import SimulationBuildError, run_simulation
 
 
 def system_list(request):
+    """Render the list of saved systems."""
+
     systems = QuantumSystem.objects.prefetch_related('simulation_runs')
     return render(
         request,
@@ -92,6 +96,8 @@ def _system_initial(current_system):
 
 
 def editor(request):
+    """Render and process the main simulator workspace."""
+
     system_cleaned_data = None
     state_cleaned_data = None
     current_system = None
@@ -239,6 +245,8 @@ def editor(request):
 
 
 def export_system_config(request, system_id):
+    """Export a saved system configuration as JSON."""
+
     system = get_object_or_404(QuantumSystem, pk=system_id)
     response = HttpResponse(
         json.dumps(system.config_json, ensure_ascii=False, indent=2),
@@ -250,6 +258,8 @@ def export_system_config(request, system_id):
 
 
 def export_run_result_json(request, run_id):
+    """Export a simulation result as JSON."""
+
     run = get_object_or_404(SimulationRun, pk=run_id)
     response = HttpResponse(
         json.dumps(run.result_json, ensure_ascii=False, indent=2),
@@ -261,6 +271,8 @@ def export_run_result_json(request, run_id):
 
 
 def export_run_result_csv(request, run_id):
+    """Export population and observable traces as CSV."""
+
     run = get_object_or_404(SimulationRun, pk=run_id)
     result = run.result_json or {}
     response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -292,8 +304,12 @@ def export_run_result_csv(request, run_id):
 
 
 def state_setup(request):
+    """Redirect legacy state URL to the unified editor page."""
+
     return redirect(f"{reverse('editor')}#initial-state")
 
 
 def results(request):
+    """Redirect legacy results URL to the unified editor page."""
+
     return redirect(f"{reverse('editor')}#results")
