@@ -1,3 +1,5 @@
+"""Database models for the simulator app."""
+
 from django.db import models
 
 
@@ -29,7 +31,7 @@ class QuantumSystem(models.Model):
         verbose_name_plural = 'Квантовые системы'
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
 
 class SimulationRun(models.Model):

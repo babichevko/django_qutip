@@ -1,3 +1,3 @@
-from django.contrib import admin
+"""Admin configuration for the core app."""
 
 # Register your models here.

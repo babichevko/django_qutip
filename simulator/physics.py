@@ -154,7 +154,7 @@ def build_initial_state(initial_state_code, initial_state_mode, dimension):
     if initial_state_mode == 'state_vector':
         if not (qobj.isket or qobj.isbra):
             raise SimulationBuildError('Начальное состояние должно быть вектором состояния QuTiP.')
-        if qobj.shape[0] != dimension and qobj.shape[1] != dimension:
+        if dimension not in (qobj.shape[0], qobj.shape[1]):
             raise SimulationBuildError('Размерность вектора состояния не совпадает с числом уровней.')
         return qobj
 
@@ -211,7 +211,8 @@ def _build_rotating_frame_offsets(levels, transitions, level_index_by_id, energi
                     stack.append(neighbor)
                 elif abs(offsets[neighbor] - expected) > tolerance_hz:
                     warnings.append(
-                        f'Frame inconsistency between levels {levels[current]["label"]} and {levels[neighbor]["label"]}.'
+                        'Frame inconsistency between levels '
+                        f'{levels[current]["label"]} and {levels[neighbor]["label"]}.'
                     )
 
     return [offset if offset is not None else energies_hz[index] for index, offset in enumerate(offsets)], warnings
