@@ -38,7 +38,7 @@
                     <h2>Параметры системы</h2>
                 </div>
             </div>
-            <form method="post" novalidate class="app-form">
+            <form method="post" novalidate class="app-form" id="system-config-form">
                 {% csrf_token %}
                 <input type="hidden" name="editor_config_json" id="system-editor-config-json" value="">
                 <input type="hidden" name="current_system_id" value="{% if current_system %}{{ current_system.id }}{% endif %}">

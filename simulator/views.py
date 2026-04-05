@@ -95,6 +95,30 @@ def _system_initial(current_system):
     }
 
 
+def _build_editor_config_from_form(level_count, level_spacing, energy_unit):
+    """Build a minimal editor configuration directly from the system form."""
+
+    viewport_top = 80
+    viewport_bottom = 460
+    step = 0 if level_count == 1 else (viewport_bottom - viewport_top) / (level_count - 1)
+    levels = []
+    for index in range(level_count):
+        y = viewport_bottom - index * step
+        levels.append(
+            {
+                'id': index + 1,
+                'label': f'|{index}>',
+                'y': round(y, 2),
+                'energy': round(index * level_spacing, 2),
+            }
+        )
+    return {
+        'energy_unit': energy_unit,
+        'levels': levels,
+        'transitions': [],
+    }
+
+
 def editor(request):
     """Render and process the main simulator workspace."""
 
@@ -129,6 +153,17 @@ def editor(request):
         state_form = SimulationSetupForm(prefix='state', level_choices=level_choices, dimension=dimension)
         if system_form.is_valid():
             system_cleaned_data = system_form.cleaned_data
+            expected_level_count = system_cleaned_data['level_count']
+            expected_energy_unit = system_cleaned_data['energy_unit']
+            should_rebuild_from_form = current_system is None or len(editor_config.get('levels', [])) != expected_level_count
+            if should_rebuild_from_form:
+                editor_config = _build_editor_config_from_form(
+                    level_count=expected_level_count,
+                    level_spacing=system_cleaned_data['level_spacing'],
+                    energy_unit=expected_energy_unit,
+                )
+            else:
+                editor_config['energy_unit'] = expected_energy_unit
             payload = {
                 'name': system_cleaned_data['name'],
                 'notes': system_cleaned_data['notes'],

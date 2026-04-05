@@ -36,6 +36,7 @@
     const systemLevelCount = document.getElementById('id_system-level_count');
     const systemSpacing = document.getElementById('id_system-level_spacing');
     const systemEnergyUnit = document.getElementById('id_system-energy_unit');
+    const systemConfigForm = document.getElementById('system-config-form');
 
     const levelLabelInput = document.getElementById('selected-level-label');
     const levelEnergyInput = document.getElementById('selected-level-energy');
@@ -728,6 +729,14 @@
     });
     document.getElementById('add-transition-btn').addEventListener('click', addTransitionBetweenSelected);
     document.getElementById('delete-selected-btn').addEventListener('click', deleteSelected);
+    systemConfigForm?.addEventListener('submit', () => {
+        const requestedCount = clamp(parseInt(systemLevelCount?.value || '3', 10) || 3, 2, 8);
+        if (state.levels.length !== requestedCount) {
+            initLevelsFromForm();
+            return;
+        }
+        syncPreview();
+    });
 
     levelLabelInput.addEventListener('input', () => {
         const selectedLevel = getSelectedLevel();
